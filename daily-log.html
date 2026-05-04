@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="color-scheme" content="only light">
+<meta name="supported-color-schemes" content="light">
+<title>Julia's Daily Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500&family=DM+Serif+Display:ital@0;1&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* Force app to control its own color scheme — prevent iOS dark mode override */
+  :root { color-scheme: only light; }
+  [data-theme="dark"] { color-scheme: only dark; }
+
+  /* ── PANTONE PALETTE ──
+     P 12-4301 TPG  Almond Milk   #F5EFE6
+     P 13-0401 TCX  Oatmeal       #E8DDD0
+     P 19-1217 TCX  Coffee Bean   #3D2314
+     P 18-1048 TCX  Caramel       #A0622A
+  ── */
+  :root {
+    --bg:       #F5EFE6;
+    --surface:  #FFFFFF;
+    --surface2: #EDE4D8;
+    --border:   #D8CDBF;
+    --border2:  #C0AE98;
+    --ink:      #3D2314;
+    --ink2:     #6B4A30;
+    --muted:    #9A7D68;
+    --dim:      #BCA898;
+    --accent:   #A0622A;
+    --accent2:  #C8884A;
+    --accent-bg:#F0E2D0;
+    --accent-bd:#D4A87A;
+    --ok:       #3A6E4A; --ok-bg:#E2F0E8; --ok-bd:#80C090;
+    --warn:     #8A6010; --warn-bg:#F5EAD0; --warn-bd:#C8A050;
+    --err:      #7A3020; --err-bg:#F5E0DA; --err-bd:#C07868;
+    --pink:     #943060; --pink-bg:#F5E0EC; --pink-bd:#C880A0;
+    --lav:      #5848A0; --lav-bg:#EAE8F8; --lav-bd:#9890D0;
+    --morning-bg:#FBF3E0; --morning-bd:#D4B060; --morning-c:#8A6010;
+    --night-bg: #EAE8F8;  --night-bd:#9890D0;   --night-c:#5848A0;
+  }
+
+  [data-theme="dark"] {
+    --bg:       #2A1A0E;
+    --surface:  #3D2314;
+    --surface2: #4F3020;
+    --border:   #6B4A30;
+    --border2:  #7A5A3C;
+    --ink:      #F5EFE6;
+    --ink2:     #DDD0C0;
+    --muted:    #B09070;
+    --dim:      #7A5A3C;
+    --accent:   #C8884A;
+    --accent2:  #E0A868;
+    --accent-bg:#4F3020;
+    --accent-bd:#8A6830;
+    --ok:       #70C090; --ok-bg:#0A1E10; --ok-bd:#305830;
+    --warn:     #D4A850; --warn-bg:#1E1608; --warn-bd:#6A5020;
+    --err:      #D08070; --err-bg:#200A08; --err-bd:#703020;
+    --pink:     #D890B8; --pink-bg:#200818; --pink-bd:#804060;
+    --lav:      #A898E0; --lav-bg:#100E20; --lav-bd:#504888;
+    --morning-bg:#2A1E08; --morning-bd:#6A5020; --morning-c:#D4A850;
+    --night-bg: #100E20;  --night-bd:#504888;   --night-c:#A898E0;
+  }
+
+  *, *::before, *::after {
+    margin:0; padding:0; box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+    /* Prevent iOS from auto-inverting colours */
+    -webkit-text-size-adjust:100%;
+  }
+
+  body {
+    background:var(--bg) !important;
+    color:var(--ink) !important;
+    font-family:'Noto Sans TC',sans-serif;
+    font-weight:300;
+    min-height:100vh;
+    padding-bottom:110px;
+    transition:background 0.25s, color 0.25s;
+    /* Defeat iOS smart invert */
+    filter:none !important;
+  }
+
+  /* Every element: block iOS from inverting */
+  * { -webkit-filter:none; }
+
+  /* ── NAV ── */
+  .nav {
+    position:fixed; bottom:0; left:0; right:0;
+    background:var(--surface) !important;
+    border-top:1px solid var(--border);
+    display:flex; z-index:100;
+    padding-bottom:env(safe-area-inset-bottom);
+    box-shadow:0 -2px 12px rgba(61,35,20,0.1);
+  }
+  .nav-btn {
+    flex:1; padding:14px 0 12px; text-align:center;
+    cursor:pointer; border:none; background:none;
+    color:var(--muted); font-size:12px; letter-spacing:0.06em;
+    font-family:'Noto Sans TC',sans-serif; transition:color 0.2s;
+  }
+  .nav-btn .icon { font-size:22px; display:block; margin-bottom:3px; }
+  .nav-btn.active { color:var(--accent); }
+
+  .page { display:none; padding:0 0 20px; }
+  .page.active { display:block; }
+
+  /* ── HEADER ── */
+  .page-header {
+    padding:50px 24px 24px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:0;
+    background:var(--surface) !important;
+    position:relative;
+  }
+  .page-eyebrow {
+    font-size:12px; letter-spacing:0.3em; color:var(--muted);
+    text-transform:uppercase; margin-bottom:10px;
+  }
+  .page-title {
+    font-family:'DM Serif Display',serif;
+    font-size:32px; color:var(--ink); line-height:1.15;
+  }
+  .page-title em { font-style:italic; color:var(--accent); }
+
+  .theme-toggle {
+    position:absolute; top:50px; right:22px;
+    width:40px; height:40px; border-radius:50%;
+    border:1px solid var(--border);
+    background:var(--surface2) !important;
+    cursor:pointer; display:flex; align-items:center;
+    justify-content:center; font-size:18px;
+    transition:background 0.2s;
+  }
+
+  /* ── DATE PICKER ── */
+  .date-picker-row {
+    display:flex; align-items:center; gap:10px; margin-top:16px;
+  }
+  .date-label { font-size:13px; color:var(--muted); flex-shrink:0; }
+
+  /* Native date input — styled to match */
+  .date-input-native {
+    flex:1; background:var(--surface2) !important;
+    border:1px solid var(--border); border-radius:8px;
+    color:var(--ink) !important; font-family:'Noto Sans TC',sans-serif;
+    font-size:14px; padding:10px 14px;
+    -webkit-appearance:none; appearance:none;
+    cursor:pointer;
+  }
+  .date-input-native:focus { outline:none; border-color:var(--accent); }
+
+  .date-nav { display:flex; gap:6px; }
+  .date-nav-btn {
+    padding:9px 13px; background:var(--surface) !important;
+    border:1px solid var(--border); border-radius:8px;
+    color:var(--muted); font-size:13px; cursor:pointer;
+    font-family:'Noto Sans TC',sans-serif; white-space:nowrap;
+    transition:border-color 0.15s;
+  }
+  .date-nav-btn:active { background:var(--surface2) !important; }
+  .date-nav-btn.today { color:var(--accent); border-color:var(--accent-bd); }
+
+  /* ── BLOCK HEADERS ── */
+  .block-header {
+    display:flex; align-items:center; gap:10px;
+    padding:18px 20px 14px;
+    border-top:1px solid var(--border); margin-top:4px;
+  }
+  .block-header:first-of-type { border-top:none; }
+  .block-pill {
+    padding:5px 14px; border-radius:20px;
+    font-size:12px; letter-spacing:0.1em; font-weight:500;
+  }
+  .block-pill.morning {
+    background:var(--morning-bg) !important; color:var(--morning-c);
+    border:1px solid var(--morning-bd);
+  }
+  .block-pill.night {
+    background:var(--night-bg) !important; color:var(--night-c);
+    border:1px solid var(--night-bd);
+  }
+  .block-hint { font-size:13px; color:var(--muted); font-style:italic; }
+
+  .log-section { padding:0 20px; margin-bottom:26px; }
+  .section-label {
+    font-size:12px; letter-spacing:0.2em; color:var(--muted);
+    text-transform:uppercase; margin-bottom:12px;
+    padding-bottom:8px; border-bottom:1px solid var(--border);
+  }
+  .section-sublabel {
+    font-size:12px; letter-spacing:0.1em; color:var(--dim);
+    text-transform:uppercase; margin-bottom:10px; margin-top:14px;
+  }
+  .divider { height:1px; background:var(--border); margin:4px 20px 16px; }
+
+  /* ── UPLOAD ── */
+  .upload-area {
+    border:1.5px dashed var(--border2); border-radius:10px;
+    padding:20px; text-align:center; cursor:pointer;
+    background:var(--surface2) !important;
+    transition:border-color 0.2s; margin-bottom:14px; position:relative;
+  }
+  .upload-area:active { border-color:var(--accent); }
+  .upload-area input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .upload-icon { font-size:26px; display:block; margin-bottom:5px; }
+  .upload-text { font-size:14px; color:var(--ink2); }
+  .upload-hint { font-size:12px; color:var(--muted); margin-top:4px; }
+  .parsing-indicator { display:none; text-align:center; padding:12px; font-size:13px; color:var(--warn); }
+  .parsed-result {
+    display:none; border-radius:8px; padding:13px 15px;
+    font-size:13px; line-height:1.7; margin-bottom:14px; white-space:pre-line;
+  }
+  .parsed-ok { background:var(--ok-bg) !important; border:1px solid var(--ok-bd); color:var(--ok); }
+  .parsed-err { background:var(--err-bg) !important; border:1px solid var(--err-bd); color:var(--err); }
+
+  /* ── BUTTONS ── */
+  .btn-group { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .opt-btn {
+    padding:11px 17px; border-radius:8px;
+    border:1px solid var(--border); background:var(--surface) !important;
+    color:var(--ink2); font-size:14px;
+    font-family:'Noto Sans TC',sans-serif; font-weight:300;
+    cursor:pointer; transition:all 0.15s; line-height:1;
+  }
+  .opt-btn:active { transform:scale(0.96); }
+  .opt-btn.sel-ok   { background:var(--ok-bg) !important;   border-color:var(--ok-bd);   color:var(--ok); }
+  .opt-btn.sel-warn { background:var(--warn-bg) !important; border-color:var(--warn-bd); color:var(--warn); }
+  .opt-btn.sel-err  { background:var(--err-bg) !important;  border-color:var(--err-bd);  color:var(--err); }
+  .opt-btn.sel-acc  { background:var(--accent-bg) !important; border-color:var(--accent-bd); color:var(--accent); }
+  .opt-btn.sel-pink { background:var(--pink-bg) !important; border-color:var(--pink-bd); color:var(--pink); }
+  .opt-btn.sel-lav  { background:var(--lav-bg) !important;  border-color:var(--lav-bd);  color:var(--lav); }
+
+  /* Other exercise input */
+  .other-exercise-wrap { display:none; margin-top:8px; }
+  .other-exercise-wrap.show { display:block; }
+  .other-input {
+    width:100%; background:var(--surface) !important;
+    border:1px solid var(--accent-bd); border-radius:8px;
+    color:var(--ink); font-family:'Noto Sans TC',sans-serif;
+    font-size:14px; padding:11px 14px;
+  }
+  .other-input:focus { outline:none; border-color:var(--accent); }
+  .other-input::placeholder { color:var(--dim); }
+
+  /* ── SCALE ── */
+  .scale-wrap { margin-bottom:14px; }
+  .scale-group { display:flex; gap:6px; }
+  .scale-btn {
+    flex:1; padding:13px 2px; border-radius:8px;
+    border:1px solid var(--border); background:var(--surface) !important;
+    color:var(--muted); font-size:16px; cursor:pointer;
+    text-align:center; transition:all 0.15s;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+  }
+  .scale-btn .sn { font-size:11px; font-family:'Noto Sans TC',sans-serif; color:var(--muted); }
+  .scale-btn:active { transform:scale(0.94); }
+  .scale-btn.selected {
+    border-color:var(--accent-bd); background:var(--accent-bg) !important;
+  }
+  .scale-btn.selected .sn { color:var(--accent); }
+  .scale-desc {
+    display:flex; justify-content:space-between;
+    font-size:11px; color:var(--dim); margin-top:5px; padding:0 2px;
+  }
+
+  /* ── SYMPTOMS ── */
+  .symptom-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .symptom-btn {
+    padding:13px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--surface) !important;
+    color:var(--muted); font-size:13px;
+    font-family:'Noto Sans TC',sans-serif; cursor:pointer;
+    text-align:center; transition:all 0.15s; line-height:1.4;
+  }
+  .symptom-btn .s-icon { font-size:20px; display:block; margin-bottom:5px; }
+  .symptom-btn:active { transform:scale(0.96); }
+  .symptom-btn.active-yes { background:var(--err-bg) !important; border-color:var(--err-bd); color:var(--err); }
+  .symptom-btn.active-no  { background:var(--ok-bg) !important;  border-color:var(--ok-bd);  color:var(--ok); }
+
+  /* ── INPUTS ── */
+  .time-row { display:flex; gap:10px; align-items:center; margin-bottom:11px; }
+  .time-label { font-size:13px; color:var(--muted); width:54px; flex-shrink:0; }
+  .time-input {
+    background:var(--surface) !important; border:1px solid var(--border);
+    border-radius:8px; color:var(--ink) !important;
+    font-family:'Noto Sans TC',sans-serif; font-size:15px;
+    padding:11px 14px; flex:1; -webkit-appearance:none;
+  }
+  .time-input:focus { outline:none; border-color:var(--accent); }
+
+  .note-input {
+    width:100%; background:var(--surface) !important;
+    border:1px solid var(--border); border-radius:8px;
+    color:var(--ink) !important; font-family:'Noto Sans TC',sans-serif;
+    font-size:14px; font-weight:300;
+    padding:13px 15px; resize:none; min-height:72px; line-height:1.65;
+  }
+  .note-input:focus { outline:none; border-color:var(--accent); }
+  .note-input::placeholder { color:var(--dim); }
+
+  /* ── STEPPER ── */
+  .number-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .number-label { font-size:14px; color:var(--ink2); flex:1; }
+  .stepper { display:flex; align-items:center; }
+  .step-btn {
+    width:40px; height:40px; border:1px solid var(--border);
+    background:var(--surface) !important; color:var(--ink2); font-size:20px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .step-btn:first-child { border-radius:8px 0 0 8px; border-right:none; }
+  .step-btn:last-child  { border-radius:0 8px 8px 0; border-left:none; }
+  .step-btn:active { background:var(--surface2) !important; }
+  .step-val {
+    min-width:52px; height:40px; border:1px solid var(--border);
+    background:var(--surface2) !important; color:var(--ink) !important;
+    font-size:16px; text-align:center; line-height:40px;
+  }
+
+  /* ── TOGGLE ── */
+  .toggle-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 0; border-bottom:1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom:none; }
+  .toggle-label { font-size:15px; color:var(--ink); }
+  .toggle {
+    width:46px; height:28px; background:var(--border);
+    border-radius:14px; position:relative; cursor:pointer;
+    transition:background 0.2s; flex-shrink:0;
+  }
+  .toggle.on { background:var(--ok); }
+  .toggle::after {
+    content:''; position:absolute;
+    width:22px; height:22px; background:#fff;
+    border-radius:50%; top:3px; left:3px;
+    transition:transform 0.2s; box-shadow:0 1px 4px rgba(0,0,0,0.2);
+  }
+  .toggle.on::after { transform:translateX(18px); }
+  .drug-note {
+    font-size:12px; color:var(--muted); margin-top:10px;
+    line-height:1.7; padding:11px 15px;
+    background:var(--surface2) !important; border-radius:6px;
+    border-left:3px solid var(--accent-bd);
+  }
+
+  /* ── SAVE ── */
+  .save-btn {
+    margin:26px 20px 0; width:calc(100% - 40px);
+    padding:17px; background:var(--accent) !important; color:#F5EFE6 !important;
+    border:none; border-radius:12px;
+    font-family:'Noto Sans TC',sans-serif; font-size:16px;
+    font-weight:500; letter-spacing:0.08em; cursor:pointer;
+    transition:opacity 0.15s, transform 0.1s;
+    box-shadow:0 4px 14px rgba(160,98,42,0.3);
+  }
+  .save-btn:active { transform:scale(0.98); opacity:0.9; }
+  .save-btn:disabled { opacity:0.4; box-shadow:none; }
+  .sync-status { margin:13px 20px 0; font-size:13px; text-align:center; min-height:20px; color:var(--muted); }
+  .sync-status.ok { color:var(--ok); }
+  .sync-status.err { color:var(--err); }
+  .sync-status.loading { color:var(--warn); }
+  .sheet-link { display:none; margin:10px 20px 0; text-align:center; font-size:13px; color:var(--muted); text-decoration:none; }
+  .sheet-link span { color:var(--ok); text-decoration:underline; }
+
+  /* ── HISTORY ── */
+  .history-header {
+    padding:50px 24px 22px; border-bottom:1px solid var(--border);
+    margin-bottom:8px; background:var(--surface) !important;
+    position:relative;
+  }
+  .history-list { padding:8px 20px; }
+  .history-card {
+    border:1px solid var(--border); border-radius:10px;
+    padding:17px 18px; margin-bottom:12px;
+    background:var(--surface) !important; cursor:pointer;
+  }
+  .history-card:active { border-color:var(--accent); }
+  .history-date {
+    font-family:'DM Serif Display',serif; font-size:17px;
+    margin-bottom:10px; color:var(--accent);
+  }
+  .history-row {
+    display:flex; align-items:flex-start; gap:6px;
+    font-size:13px; color:var(--muted); margin-bottom:5px; flex-wrap:wrap;
+  }
+  .history-row .lbl { color:var(--dim); width:36px; flex-shrink:0; font-size:11px; margin-top:2px; }
+  .pip {
+    display:inline-flex; align-items:center; gap:2px;
+    padding:3px 8px; border-radius:4px; font-size:12px;
+    background:var(--surface2) !important; color:var(--muted);
+  }
+  .empty-state {
+    text-align:center; padding:60px 24px;
+    color:var(--muted); font-size:15px; line-height:2;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(61,35,20,0.55); z-index:200;
+    padding:20px; overflow-y:auto; backdrop-filter:blur(4px);
+  }
+  .modal-overlay.open { display:flex; align-items:flex-start; padding-top:50px; }
+  .modal {
+    background:var(--surface) !important; border:1px solid var(--border);
+    border-radius:14px; width:100%; max-width:480px;
+    margin:0 auto; padding:24px;
+    box-shadow:0 8px 32px rgba(61,35,20,0.25);
+  }
+  .modal-title { font-family:'DM Serif Display',serif; font-size:21px; color:var(--accent); margin-bottom:20px; }
+  .modal-row { margin-bottom:14px; font-size:14px; line-height:1.7; color:var(--ink); }
+  .modal-row .key { font-size:11px; letter-spacing:0.15em; color:var(--muted); text-transform:uppercase; margin-bottom:2px; }
+  .modal-close {
+    width:100%; margin-top:20px; padding:13px;
+    background:var(--surface2) !important; border:1px solid var(--border);
+    border-radius:8px; color:var(--ink2); font-size:15px;
+    cursor:pointer; font-family:'Noto Sans TC',sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOG PAGE -->
+<div class="page active" id="page-log">
+  <div class="page-header">
+    <div class="page-eyebrow">Recharge Season · 每日記錄</div>
+    <div class="page-title">Julia's <em>Daily Log</em></div>
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()">☀️</button>
+    <div class="date-picker-row">
+      <div class="date-label">日期</div>
+      <input type="date" id="date-input" class="date-input-native" onchange="onDateChange(this.value)">
+      <div class="date-nav">
+        <button class="date-nav-btn today" onclick="goToday()">今天</button>
+        <button class="date-nav-btn" onclick="goYesterday()">昨天</button>
+      </div>
+    </div>
+    <div id="date-dow" style="margin-top:8px;font-size:13px;color:var(--muted);letter-spacing:0.05em;padding-left:2px;"></div>
+  </div>
+
+  <!-- ══ 早晨 ══ -->
+  <div class="block-header">
+    <div class="block-pill morning">🌅 早晨填</div>
+    <div class="block-hint">Rise and shine!</div>
+  </div>
+
+  <div class="log-section">
+    <div class="section-label">😴 睡眠　<span style="color:var(--accent);font-size:11px;letter-spacing:0.05em;">可上傳 Apple Health 截圖自動填入 ↓</span></div>
+    <label class="upload-area" for="health-img" style="display:block;cursor:pointer;">
+      <input type="file" id="health-img" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="parseHealthImage(event)">
+      <span class="upload-icon">📱</span>
+      <div class="upload-text">點此上傳 Apple Health 睡眠截圖</div>
+      <div class="upload-hint">自動解析：總時數・入睡/起床時間・深層 REM 比例</div>
+    </label>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <div style="font-size:11px;color:var(--dim);letter-spacing:0.1em;">或貼上我給你的數據</div>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <input type="text" id="paste-sleep" class="time-input"
+        placeholder="00:00 | 09:21 | 9h21m | 28 | 17 | 39 | 16 | 總結文字"
+        style="flex:1;font-size:13px;"
+        oninput="tryPasteSleep(this.value)">
+      <button onclick="applyPasteSleep()" style="padding:10px 14px;background:var(--accent);color:#F5EFE6;border:none;border-radius:8px;font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;white-space:nowrap;">填入</button>
+    </div>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:14px;line-height:1.6;">
+      傳截圖給 Claude，複製他給的數字串貼上後點填入
+    </div>
+
+    <!-- Sleep summary box -->
+    <div id="sleep-summary-box" style="display:none;background:var(--ok-bg);border:1px solid var(--ok-bd);border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+      <div style="font-size:11px;letter-spacing:0.15em;color:var(--ok);text-transform:uppercase;margin-bottom:6px;">睡眠總結</div>
+      <div id="sleep-summary-text" style="font-size:14px;color:var(--ink);line-height:1.8;white-space:pre-line;"></div>
+    </div>
+    <div class="parsing-indicator" id="parsing-indicator">⏳ 正在解析截圖…</div>
+    <div class="parsed-result" id="parsed-result"></div>
+
+    <div class="time-row">
+      <div class="time-label">入睡</div>
+      <input type="time" class="time-input" id="sleep-start">
+    </div>
+    <div class="time-row">
+      <div class="time-label">起床</div>
+      <input type="time" class="time-input" id="sleep-end">
+    </div>
+    <div class="time-row" style="margin-bottom:14px;">
+      <div class="time-label">總時數</div>
+      <input type="text" class="time-input" id="sleep-total" placeholder="例：5h 39m" style="flex:0.55;">
+    </div>
+
+    <div class="section-sublabel">夜醒次數</div>
+    <div class="btn-group" style="margin-bottom:14px;">
+      <button class="opt-btn" data-g="wake" data-v="0" onclick="sel(this,'wake','acc')">0 次</button>
+      <button class="opt-btn" data-g="wake" data-v="1" onclick="sel(this,'wake','acc')">1 次</button>
+      <button class="opt-btn" data-g="wake" data-v="2" onclick="sel(this,'wake','acc')">2 次</button>
+      <button class="opt-btn" data-g="wake" data-v="3+" onclick="sel(this,'wake','acc')">3 次以上</button>
+    </div>
+
+    <div class="section-sublabel">起床感受</div>
+    <div class="scale-wrap">
+      <div class="scale-group">
+        <button class="scale-btn" data-g="wakeup" data-v="1" onclick="scl(this,'wakeup')">😩<span class="sn">很累</span></button>
+        <button class="scale-btn" data-g="wakeup" data-v="2" onclick="scl(this,'wakeup')">😔<span class="sn">還累</span></button>
+        <button class="scale-btn" data-g="wakeup" data-v="3" onclick="scl(this,'wakeup')">😐<span class="sn">普通</span></button>
+        <button class="scale-btn" data-g="wakeup" data-v="4" onclick="scl(this,'wakeup')">🙂<span class="sn">尚可</span></button>
+        <button class="scale-btn" data-g="wakeup" data-v="5" onclick="scl(this,'wakeup')">😊<span class="sn">很好</span></button>
+      </div>
+    </div>
+
+    <div class="section-sublabel">夢境（有做夢的話）</div>
+    <textarea class="note-input" id="dream-note" placeholder="記下夢的內容或感受…（可不填）" rows="2"></textarea>
+
+    <!-- Quick save after morning section -->
+    <button id="quick-save-btn" onclick="quickSave(this)" style="width:100%;padding:13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--ink2);font-size:14px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;letter-spacing:0.05em;margin-top:12px;transition:all 0.2s;">
+      ↑ 先儲存早晨記錄，晚點再補睡前
+    </button>
+    <div id="quick-save-status" style="display:none;text-align:center;font-size:13px;color:var(--ok);margin-top:8px;letter-spacing:0.05em;">✓ 已儲存</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══ 睡前 ══ -->
+  <div class="block-header">
+    <div class="block-pill night">🌙 睡前填</div>
+    <div class="block-hint">Sweet dreams!</div>
+  </div>
+
+  <!-- 腸胃 -->
+  <div class="log-section">
+    <div class="section-label">🌡️ 腸胃</div>
+    <div class="section-sublabel">整體狀況</div>
+    <div class="scale-wrap">
+      <div class="scale-group">
+        <button class="scale-btn" data-g="gut" data-v="1" onclick="scl(this,'gut')">😣<span class="sn">很差</span></button>
+        <button class="scale-btn" data-g="gut" data-v="2" onclick="scl(this,'gut')">😞<span class="sn">差</span></button>
+        <button class="scale-btn" data-g="gut" data-v="3" onclick="scl(this,'gut')">😐<span class="sn">普通</span></button>
+        <button class="scale-btn" data-g="gut" data-v="4" onclick="scl(this,'gut')">🙂<span class="sn">還好</span></button>
+        <button class="scale-btn" data-g="gut" data-v="5" onclick="scl(this,'gut')">😊<span class="sn">良好</span></button>
+      </div>
+    </div>
+    <div class="section-sublabel">脹氣程度</div>
+    <div class="scale-wrap">
+      <div class="scale-group">
+        <button class="scale-btn" data-g="bloat" data-v="1" onclick="scl(this,'bloat')">🔴<span class="sn">極嚴重</span></button>
+        <button class="scale-btn" data-g="bloat" data-v="2" onclick="scl(this,'bloat')">🟠<span class="sn">明顯</span></button>
+        <button class="scale-btn" data-g="bloat" data-v="3" onclick="scl(this,'bloat')">🟡<span class="sn">輕微</span></button>
+        <button class="scale-btn" data-g="bloat" data-v="4" onclick="scl(this,'bloat')">🟢<span class="sn">幾乎無</span></button>
+      </div>
+      <div class="scale-desc"><span>持續脹痛難耐</span><span>偶爾有感</span><span>幾乎正常</span></div>
+    </div>
+    <div class="section-sublabel">拉肚子</div>
+    <div class="scale-wrap">
+      <div class="scale-group">
+        <button class="scale-btn" data-g="diarrhea" data-v="1" onclick="scl(this,'diarrhea')">🚨<span class="sn">嚴重</span></button>
+        <button class="scale-btn" data-g="diarrhea" data-v="2" onclick="scl(this,'diarrhea')">⚠️<span class="sn">明顯</span></button>
+        <button class="scale-btn" data-g="diarrhea" data-v="3" onclick="scl(this,'diarrhea')">〰️<span class="sn">輕微</span></button>
+        <button class="scale-btn" data-g="diarrhea" data-v="4" onclick="scl(this,'diarrhea')">✅<span class="sn">無</span></button>
+      </div>
+      <div class="scale-desc"><span>多次水瀉</span><span>軟便 1–2 次</span><span>正常</span></div>
+    </div>
+    <div class="section-sublabel">胃食道逆流</div>
+    <div class="scale-wrap">
+      <div class="scale-group">
+        <button class="scale-btn" data-g="gerd" data-v="1" onclick="scl(this,'gerd')">🔥<span class="sn">嚴重</span></button>
+        <button class="scale-btn" data-g="gerd" data-v="2" onclick="scl(this,'gerd')">😖<span class="sn">明顯</span></button>
+        <button class="scale-btn" data-g="gerd" data-v="3" onclick="scl(this,'gerd')">😕<span class="sn">輕微</span></button>
+        <button class="scale-btn" data-g="gerd" data-v="4" onclick="scl(this,'gerd')">😌<span class="sn">無</span></button>
+      </div>
+      <div class="scale-desc"><span>燒灼強／想吐</span><span>偶有酸味</span><span>沒感覺</span></div>
+    </div>
+    <textarea class="note-input" id="gut-trigger" placeholder="腸胃觸發因素？（可不填）" rows="2"></textarea>
+  </div>
+
+  <!-- 心情 -->
+  <div class="log-section">
+    <div class="section-label">🧠 心情 &amp; 情緒</div>
+    <div class="scale-wrap">
+      <div class="scale-group">
+        <button class="scale-btn" data-g="mood" data-v="1" onclick="scl(this,'mood')">🌑<span class="sn">很低落</span></button>
+        <button class="scale-btn" data-g="mood" data-v="2" onclick="scl(this,'mood')">🌘<span class="sn">不好</span></button>
+        <button class="scale-btn" data-g="mood" data-v="3" onclick="scl(this,'mood')">🌗<span class="sn">普通</span></button>
+        <button class="scale-btn" data-g="mood" data-v="4" onclick="scl(this,'mood')">🌔<span class="sn">不錯</span></button>
+        <button class="scale-btn" data-g="mood" data-v="5" onclick="scl(this,'mood')">🌕<span class="sn">很好</span></button>
+      </div>
+    </div>
+    <div class="section-sublabel">焦慮感</div>
+    <div class="btn-group">
+      <button class="opt-btn" data-g="anxiety" data-v="無" onclick="sel(this,'anxiety','ok')">無</button>
+      <button class="opt-btn" data-g="anxiety" data-v="輕微" onclick="sel(this,'anxiety','warn')">輕微</button>
+      <button class="opt-btn" data-g="anxiety" data-v="明顯" onclick="sel(this,'anxiety','warn')">明顯</button>
+      <button class="opt-btn" data-g="anxiety" data-v="嚴重" onclick="sel(this,'anxiety','err')">嚴重</button>
+    </div>
+  </div>
+
+  <!-- 身體 -->
+  <div class="log-section">
+    <div class="section-label">🩺 身體症狀</div>
+    <div class="section-sublabel">頭痛</div>
+    <div class="btn-group" style="margin-bottom:14px;">
+      <button class="opt-btn" data-g="headache" data-v="無" onclick="sel(this,'headache','ok')">無</button>
+      <button class="opt-btn" data-g="headache" data-v="輕微" onclick="sel(this,'headache','warn')">輕微</button>
+      <button class="opt-btn" data-g="headache" data-v="明顯" onclick="sel(this,'headache','err')">明顯</button>
+      <button class="opt-btn" data-g="headache" data-v="嚴重" onclick="sel(this,'headache','err')">嚴重、影響日常</button>
+    </div>
+    <div class="section-sublabel">肩頸酸痛</div>
+    <div class="btn-group">
+      <button class="opt-btn" data-g="neck" data-v="無" onclick="sel(this,'neck','ok')">無</button>
+      <button class="opt-btn" data-g="neck" data-v="輕微" onclick="sel(this,'neck','warn')">輕微</button>
+      <button class="opt-btn" data-g="neck" data-v="明顯" onclick="sel(this,'neck','err')">明顯緊繃</button>
+      <button class="opt-btn" data-g="neck" data-v="嚴重" onclick="sel(this,'neck','err')">嚴重僵硬</button>
+    </div>
+  </div>
+
+  <!-- 月經 -->
+  <div class="log-section">
+    <div class="section-label">🌸 月經 &amp; 女性症狀</div>
+    <div class="section-sublabel">月經狀態</div>
+    <div class="btn-group" style="margin-bottom:16px;">
+      <button class="opt-btn" data-g="period" data-v="無" onclick="sel(this,'period','ok')">無（非經期）</button>
+      <button class="opt-btn" data-g="period" data-v="經期第1天" onclick="sel(this,'period','pink')">📍 第 1 天</button>
+      <button class="opt-btn" data-g="period" data-v="經期中" onclick="sel(this,'period','pink')">經期中</button>
+      <button class="opt-btn" data-g="period" data-v="剛結束" onclick="sel(this,'period','acc')">剛結束</button>
+    </div>
+    <div class="section-sublabel">經血量 / 痛感（經期中填）</div>
+    <div class="btn-group" style="margin-bottom:16px;">
+      <button class="opt-btn" data-g="flow" data-v="量少" onclick="sel(this,'flow','pink')">量少</button>
+      <button class="opt-btn" data-g="flow" data-v="量中" onclick="sel(this,'flow','pink')">量中</button>
+      <button class="opt-btn" data-g="flow" data-v="量多" onclick="sel(this,'flow','pink')">量多</button>
+      <button class="opt-btn" data-g="flow" data-v="痛經輕微" onclick="sel(this,'flow','err')">痛經輕微</button>
+      <button class="opt-btn" data-g="flow" data-v="痛經明顯" onclick="sel(this,'flow','err')">痛經明顯</button>
+    </div>
+    <div class="section-sublabel">今天有無這些症狀</div>
+    <div class="symptom-grid">
+      <button class="symptom-btn" id="sym-breast" onclick="toggleSymptom('breast')">
+        <span class="s-icon">🫀</span>脹奶 / 乳房脹痛
+      </button>
+      <button class="symptom-btn" id="sym-cramp" onclick="toggleSymptom('cramp')">
+        <span class="s-icon">🌀</span>下腹悶痛 / 抽痛
+      </button>
+      <button class="symptom-btn" id="sym-lymph" onclick="toggleSymptom('lymph')">
+        <span class="s-icon">🔴</span>腋下淋巴腫痛
+      </button>
+      <button class="symptom-btn" id="sym-pmood" onclick="toggleSymptom('pmood')">
+        <span class="s-icon">🌧️</span>情緒波動 / 易怒
+      </button>
+    </div>
+  </div>
+
+  <!-- CES -->
+  <div class="log-section">
+    <div class="section-label">⚡ CES 經顱微電流</div>
+    <div class="btn-group" style="margin-bottom:12px;">
+      <button class="opt-btn" data-g="ces" data-v="有做" onclick="sel(this,'ces','acc')">✓ 今天有做</button>
+      <button class="opt-btn" data-g="ces" data-v="沒做" onclick="sel(this,'ces','warn')">✗ 今天沒做</button>
+    </div>
+    <div class="number-row">
+      <div class="number-label">治療時數</div>
+      <div class="stepper">
+        <button class="step-btn" onclick="stepCES(-0.5)">−</button>
+        <div class="step-val" id="ces-val">0</div>
+        <button class="step-btn" onclick="stepCES(0.5)">＋</button>
+      </div>
+      <span style="font-size:14px;color:var(--muted);margin-left:8px;">小時</span>
+    </div>
+  </div>
+
+  <!-- 藥物 -->
+  <div class="log-section">
+    <div class="section-label">💊 藥物</div>
+    <div class="toggle-row">
+      <div class="toggle-label">照常服藥</div>
+      <div class="toggle on" id="toggle-meds" onclick="tog(this,'meds')"></div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">今天是減藥日</div>
+      <div class="toggle" id="toggle-reduce" onclick="tog(this,'reduce')"></div>
+    </div>
+    <div style="height:10px;"></div>
+    <textarea class="note-input" id="drug-note" placeholder="藥物備註（可不填）" rows="2"></textarea>
+    <div class="drug-note">安保思樂 100mg・美舒鬱 50mg・樂眠錠 2mg・柔拍 10mg・褪黑激素 20mg・黃體素 100mg・鎂 1000mg</div>
+  </div>
+
+  <!-- 運動 -->
+  <div class="log-section">
+    <div class="section-label">🏃 運動</div>
+    <div class="btn-group" id="exercise-btns">
+      <button class="opt-btn" data-g="ex" data-v="網球課" onclick="multi(this,'ok')">🎾 網球課</button>
+      <button class="opt-btn" data-g="ex" data-v="自主練球" onclick="multi(this,'ok')">🎾 自主練球</button>
+      <button class="opt-btn" data-g="ex" data-v="游泳" onclick="multi(this,'ok')">🏊 游泳</button>
+      <button class="opt-btn" data-g="ex" data-v="芭蕾" onclick="multi(this,'ok')">🩰 芭蕾</button>
+      <button class="opt-btn" data-g="ex" data-v="散步" onclick="multi(this,'ok')">🚶 散步</button>
+      <button class="opt-btn" data-g="ex" data-v="匹克球" onclick="multi(this,'ok')">🏓 匹克球</button>
+      <button class="opt-btn" data-g="ex" data-v="跑步" onclick="multi(this,'ok')">🏃 跑步</button>
+      <button class="opt-btn" data-g="ex" data-v="其他" onclick="multiOther(this)">＋ 其他</button>
+    </div>
+    <div class="other-exercise-wrap" id="other-exercise-wrap">
+      <input type="text" class="other-input" id="other-exercise-input" placeholder="寫下是什麼運動…">
+    </div>
+  </div>
+
+  <!-- 今天一句話 -->
+  <div class="log-section">
+    <div class="section-label">✨ 今天一句話</div>
+    <textarea class="note-input" id="daily-note" placeholder="今天最想記下的一件事…" rows="3"></textarea>
+  </div>
+
+  <button class="save-btn" id="save-btn" onclick="saveLog()">儲存這天的記錄</button>
+  <div class="sync-status" id="sync-status"></div>
+  <a class="sheet-link" id="sheet-link" href="#" target="_blank">📊 在 Google Sheet 查看完整記錄 <span>→</span></a>
+</div>
+
+<!-- HISTORY PAGE -->
+<div class="page" id="page-history">
+  <div class="history-header">
+    <div class="page-eyebrow">Recharge Season · 每日記錄</div>
+    <div class="page-title">Julia's <em style="font-style:italic;color:var(--accent);">Daily Log</em></div>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+  </div>
+  <div class="history-list" id="history-list">
+    <div class="empty-state">還沒有記錄<br><span style="font-size:13px;color:var(--dim);">儲存第一天後會出現在這裡</span></div>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" id="nav-log" onclick="showPage('log')"><span class="icon">📝</span>記錄</button>
+  <button class="nav-btn" id="nav-history" onclick="showPage('history')"><span class="icon">📖</span>記錄本</button>
+</nav>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+    <button class="modal-close" onclick="closeModal()">關閉</button>
+  </div>
+</div>
+
+<script>
+const S={wake:null,wakeup:null,gut:null,bloat:null,diarrhea:null,gerd:null,mood:null,anxiety:null,headache:null,neck:null,period:null,flow:null,symptoms:{breast:null,cramp:null,lymph:null,pmood:null},ces:null,meds:true,reduce:false,exercise:[],cesH:0,parsed:null,sleepSummary:''};
+const SHEET_KEY='julia_daily_log_sheet';
+const LOGS_KEY='julia_daily_log_v1';
+const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbwqx5FykOo9pfM_UN-Ty0I3g6bOTM6dBNt_9iC9dMEBicQHJxtHJt2rE5V50IPaSQ8kCw/exec';
+
+// ── THEME ──
+function toggleTheme(){
+  const html=document.documentElement;
+  const dark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',dark?'light':'dark');
+  html.setAttribute('style',dark?'color-scheme:only light':'color-scheme:only dark');
+  document.querySelectorAll('.theme-toggle').forEach(b=>b.textContent=dark?'☀️':'🌙');
+  localStorage.setItem('rs_theme',dark?'light':'dark');
+}
+(function(){
+  const t=localStorage.getItem('rs_theme')||'light';
+  const html=document.documentElement;
+  html.setAttribute('data-theme',t);
+  html.setAttribute('style',t==='dark'?'color-scheme:only dark':'color-scheme:only light');
+  setTimeout(()=>document.querySelectorAll('.theme-toggle').forEach(b=>b.textContent=t==='dark'?'🌙':'☀️'),0);
+})();
+
+// ── DATE ──
+function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function ydStr(){const d=new Date(Date.now()-86400000);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+function updateDow(dateStr){
+  if(!dateStr)return;
+  const[y,m,d]=dateStr.split('-');
+  const days=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  const w=new Date(+y,+m-1,+d).getDay();
+  const today=todayStr(),yd=ydStr();
+  let label=days[w];
+  if(dateStr===today)label+='　· 今天';
+  else if(dateStr===yd)label+='　· 昨天';
+  document.getElementById('date-dow').textContent=label;
+}
+
+function initDateInput(){
+  const inp=document.getElementById('date-input');
+  inp.max=todayStr();
+  inp.value=todayStr();
+  updateDow(todayStr());
+}
+
+function onDateChange(v){if(v){loadDateIntoForm(v);updateDow(v);}}
+function goToday(){const inp=document.getElementById('date-input');inp.value=todayStr();loadDateIntoForm(todayStr());updateDow(todayStr());}
+function goYesterday(){const inp=document.getElementById('date-input');inp.value=ydStr();loadDateIntoForm(ydStr());updateDow(ydStr());}
+function currentDate(){return document.getElementById('date-input').value||todayStr();}
+
+function loadDateIntoForm(d){
+  const logs=getLogs();const e=logs.find(l=>l.date===d);
+  resetForm();if(e)populateForm(e);
+}
+
+function resetForm(){
+  for(const k in S){
+    if(k==='meds')S[k]=true;
+    else if(k==='reduce')S[k]=false;
+    else if(k==='exercise')S[k]=[];
+    else if(k==='cesH')S[k]=0;
+    else if(k==='symptoms')S[k]={breast:null,cramp:null,lymph:null,pmood:null};
+    else if(k==='parsed')S[k]=null;
+    else if(k==='sleepSummary')S[k]='';
+    else S[k]=null;
+  }
+  document.querySelectorAll('.opt-btn').forEach(b=>b.className=b.className.replace(/sel-\w+/g,'').trim());
+  document.querySelectorAll('.scale-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('.symptom-btn').forEach(b=>b.classList.remove('active-yes','active-no'));
+  ['sleep-start','sleep-end','sleep-total','gut-trigger','drug-note','daily-note','other-exercise-input','dream-note'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('ces-val').textContent='0';
+  document.getElementById('toggle-meds').className='toggle on';
+  document.getElementById('toggle-reduce').className='toggle';
+  document.getElementById('parsed-result').style.display='none';
+  document.getElementById('sleep-summary-box').style.display='none';
+  document.getElementById('sleep-summary-text').textContent='';
+  document.getElementById('other-exercise-wrap').classList.remove('show');
+}
+
+function populateForm(log){
+  if(log.sleepStart)document.getElementById('sleep-start').value=log.sleepStart;
+  if(log.sleepEnd)document.getElementById('sleep-end').value=log.sleepEnd;
+  if(log.sleepTotal)document.getElementById('sleep-total').value=log.sleepTotal;
+  if(log.gutTrigger)document.getElementById('gut-trigger').value=log.gutTrigger;
+  if(log.drugNote)document.getElementById('drug-note').value=log.drugNote;
+  if(log.note)document.getElementById('daily-note').value=log.note;
+  if(log.dreamNote)document.getElementById('dream-note').value=log.dreamNote;
+  if(log.otherExercise){document.getElementById('other-exercise-input').value=log.otherExercise;document.getElementById('other-exercise-wrap').classList.add('show');}
+  if(log.cesH){S.cesH=+log.cesH;document.getElementById('ces-val').textContent=log.cesH;}
+  if(log.meds==='否'){S.meds=false;document.getElementById('toggle-meds').className='toggle';}
+  if(log.reduce==='是'){S.reduce=true;document.getElementById('toggle-reduce').className='toggle on';}
+  [{g:'wake',v:log.wake},{g:'wakeup',v:log.wakeup},{g:'gut',v:log.gut},{g:'bloat',v:log.bloat},{g:'diarrhea',v:log.diarrhea},{g:'gerd',v:log.gerd},{g:'mood',v:log.mood},{g:'anxiety',v:log.anxiety},{g:'headache',v:log.headache},{g:'neck',v:log.neck},{g:'period',v:log.period},{g:'flow',v:log.flow},{g:'ces',v:log.ces}].forEach(({g,v})=>{if(v&&v!=='—'){const b=document.querySelector(`[data-g="${g}"][data-v="${v}"]`);if(b)b.click();}});
+  if(log.exercise&&log.exercise!=='無'){
+    log.exercise.split('、').forEach(v=>{
+      const b=document.querySelector(`[data-g="ex"][data-v="${v}"]`);
+      if(b){if(v==='其他')multiOther(b);else b.click();}
+    });
+  }
+  [{k:'breast',v:log.symBreast},{k:'cramp',v:log.symCramp},{k:'lymph',v:log.symLymph},{k:'pmood',v:log.symPmood}].forEach(({k,v})=>{if(v==='有'){S.symptoms[k]='有';document.getElementById('sym-'+k).classList.add('active-yes');}else if(v==='無'){S.symptoms[k]='無';document.getElementById('sym-'+k).classList.add('active-no');}});
+}
+
+// ── INTERACTIONS ──
+function sel(btn,g,c){document.querySelectorAll(`[data-g="${g}"]`).forEach(b=>b.className=b.className.replace(/sel-\w+/g,'').trim());btn.classList.add('sel-'+c);S[g]=btn.dataset.v;}
+function scl(btn,g){document.querySelectorAll(`[data-g="${g}"]`).forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');S[g]=btn.dataset.v;}
+
+function multi(btn,c){
+  const v=btn.dataset.v;
+  if(btn.classList.contains('sel-'+c)){btn.classList.remove('sel-'+c);S.exercise=S.exercise.filter(x=>x!==v);}
+  else{btn.classList.add('sel-'+c);if(!S.exercise.includes(v))S.exercise.push(v);}
+}
+
+function multiOther(btn){
+  const c='ok';const v='其他';
+  const wrap=document.getElementById('other-exercise-wrap');
+  if(btn.classList.contains('sel-'+c)){
+    btn.classList.remove('sel-'+c);
+    S.exercise=S.exercise.filter(x=>x!==v);
+    wrap.classList.remove('show');
+    document.getElementById('other-exercise-input').value='';
+  }else{
+    btn.classList.add('sel-'+c);
+    if(!S.exercise.includes(v))S.exercise.push(v);
+    wrap.classList.add('show');
+    setTimeout(()=>document.getElementById('other-exercise-input').focus(),100);
+  }
+}
+
+function tog(el,k){el.classList.toggle('on');S[k]=el.classList.contains('on');}
+function stepCES(d){S.cesH=Math.max(0,Math.min(5,+(S.cesH+d).toFixed(1)));document.getElementById('ces-val').textContent=S.cesH;}
+function toggleSymptom(key){
+  const el=document.getElementById('sym-'+key);const cur=S.symptoms[key];
+  if(cur===null||cur==='無'){S.symptoms[key]='有';el.classList.remove('active-no');el.classList.add('active-yes');}
+  else if(cur==='有'){S.symptoms[key]='無';el.classList.remove('active-yes');el.classList.add('active-no');}
+  else{S.symptoms[key]=null;el.classList.remove('active-yes','active-no');}
+}
+
+// ── PASTE SLEEP DATA ──
+function tryPasteSleep(val){
+  if((val.match(/\|/g)||[]).length>=2) applyPasteSleep();
+}
+
+function applyPasteSleep(){
+  const raw=document.getElementById('paste-sleep').value.trim();
+  if(!raw)return;
+  const parts=raw.split(/\s*\|\s*/).map(s=>s.trim()).filter(Boolean);
+  // parts: [sleepStart, sleepEnd, totalSleep, deep, rem, core, awake, ...summary]
+  if(parts.length<3){
+    showPasteResult('格式不對，需要至少：入睡 | 起床 | 總時數','err');return;
+  }
+  const [sleepStart, sleepEnd, totalSleep, deep, rem, core, awake, ...summaryParts] = parts;
+  const summary = summaryParts.join('|').trim();
+
+  if(sleepStart) document.getElementById('sleep-start').value=sleepStart;
+  if(sleepEnd)   document.getElementById('sleep-end').value=sleepEnd;
+  if(totalSleep) document.getElementById('sleep-total').value=totalSleep;
+
+  S.parsed = {
+    sleepStart: sleepStart||null,
+    sleepEnd:   sleepEnd||null,
+    totalSleep: totalSleep||null,
+    deepPercent:  deep  ? parseFloat(deep)  : null,
+    remPercent:   rem   ? parseFloat(rem)   : null,
+    corePercent:  core  ? parseFloat(core)  : null,
+    awakePercent: awake ? parseFloat(awake) : null,
+  };
+  S.sleepSummary = summary || '';
+
+  // Show summary box if summary provided
+  const box = document.getElementById('sleep-summary-box');
+  const txt = document.getElementById('sleep-summary-text');
+  if(summary){
+    // Replace // with actual newlines
+    txt.textContent = summary.replace(/\/\//g, '\n');
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+
+  // Show filled confirmation (brief)
+  showPasteResult('✓ 填入完成　' + sleepStart + ' → ' + sleepEnd + '　' + totalSleep, 'ok');
+}
+
+function quickSave(btn){
+  btn.textContent='儲存中…';
+  btn.style.opacity='0.7';
+  btn.disabled=true;
+  saveLog();
+  setTimeout(()=>{
+    btn.textContent='✓ 已儲存早晨記錄';
+    btn.style.background='var(--ok-bg)';
+    btn.style.borderColor='var(--ok-bd)';
+    btn.style.color='var(--ok)';
+    btn.style.opacity='1';
+    btn.disabled=false;
+    setTimeout(()=>{
+      btn.textContent='↑ 先儲存早晨記錄，晚點再補睡前';
+      btn.style.background='';btn.style.borderColor='';btn.style.color='';
+    },3000);
+  },400);
+}
+function showPasteResult(msg,type){
+  const re=document.getElementById('parsed-result');
+  re.textContent=msg;
+  re.className='parsed-result parsed-'+(type==='ok'?'ok':'err');
+  re.style.display='block';
+}
+async function parseHealthImage(ev){
+  const file=ev.target.files[0];
+  if(!file){return;}
+
+  const indicator=document.getElementById('parsing-indicator');
+  const re=document.getElementById('parsed-result');
+  indicator.style.display='block';
+  re.style.display='none';
+
+  try{
+    // Read file
+    const b64=await new Promise((resolve,reject)=>{
+      const fr=new FileReader();
+      fr.onload=()=>{
+        const result=fr.result;
+        if(!result||!result.includes(','))return reject(new Error('圖片讀取失敗'));
+        resolve(result.split(',')[1]);
+      };
+      fr.onerror=()=>reject(new Error('FileReader 錯誤'));
+      fr.readAsDataURL(file);
+    });
+
+    // Call API
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:500,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:b64}},
+            {type:'text',text:'This is an Apple Health sleep screenshot. Extract the sleep data and return ONLY a raw JSON object with these fields (no markdown, no explanation, just the JSON): {"totalSleep":"5h 39m","sleepStart":"23:00","sleepEnd":"08:39","awakePercent":25,"remPercent":6,"corePercent":48,"deepPercent":21}. Use null for any field not visible.'}
+          ]
+        }]
+      })
+    });
+
+    const rawText=await res.text();
+
+    if(!res.ok){
+      throw new Error(`API ${res.status}: ${rawText.slice(0,150)}`);
+    }
+
+    let data;
+    try{ data=JSON.parse(rawText); }
+    catch(e){ throw new Error('回傳非 JSON: '+rawText.slice(0,100)); }
+
+    const txt=data.content?.find(c=>c.type==='text')?.text||'';
+    if(!txt) throw new Error('回傳內容為空，content: '+JSON.stringify(data.content).slice(0,100));
+
+    // Try to extract JSON from the text — handle markdown fences and extra text
+    let jsonStr=txt;
+    // Remove markdown fences
+    jsonStr=jsonStr.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    // If there's a JSON object somewhere, extract it
+    const match=jsonStr.match(/\{[\s\S]*\}/);
+    if(match) jsonStr=match[0];
+
+    let p;
+    try{ p=JSON.parse(jsonStr); }
+    catch(e){ throw new Error('JSON 解析失敗。原始回傳：'+txt.slice(0,150)); }
+
+    // Fill form fields
+    if(p.sleepStart) document.getElementById('sleep-start').value=p.sleepStart;
+    if(p.sleepEnd)   document.getElementById('sleep-end').value=p.sleepEnd;
+    if(p.totalSleep) document.getElementById('sleep-total').value=p.totalSleep;
+    S.parsed=p;
+
+    // Show success
+    let msg='✓ 解析完成\n';
+    msg+=`總睡眠：${p.totalSleep||'—'}　入睡：${p.sleepStart||'—'}　起床：${p.sleepEnd||'—'}`;
+    if(p.deepPercent!=null) msg+=`\n深層 ${p.deepPercent}%　REM ${p.remPercent}%　核心 ${p.corePercent}%　清醒 ${p.awakePercent}%`;
+    re.textContent=msg;
+    re.className='parsed-result parsed-ok';
+    re.style.display='block';
+
+  }catch(e){
+    re.textContent='⚠ 解析失敗：'+e.message;
+    re.className='parsed-result parsed-err';
+    re.style.display='block';
+  }finally{
+    indicator.style.display='none';
+    ev.target.value='';
+  }
+}
+
+// ── SAVE ──
+async function saveLog(){
+  const btn=document.getElementById('save-btn'),st=document.getElementById('sync-status');
+  btn.disabled=true;st.className='sync-status loading';st.textContent='正在儲存…';
+  const p=S.parsed||{};
+  const otherEx=document.getElementById('other-exercise-input').value.trim();
+  const log={
+    date:currentDate(),
+    sleepStart:document.getElementById('sleep-start').value||'—',
+    sleepEnd:document.getElementById('sleep-end').value||'—',
+    sleepTotal:document.getElementById('sleep-total').value||'—',
+    sleepDeep:p.deepPercent!=null?p.deepPercent+'%':'—',
+    sleepREM:p.remPercent!=null?p.remPercent+'%':'—',
+    sleepAwake:p.awakePercent!=null?p.awakePercent+'%':'—',
+    wake:S.wake||'—',wakeup:S.wakeup||'—',
+    gut:S.gut||'—',bloat:S.bloat||'—',diarrhea:S.diarrhea||'—',gerd:S.gerd||'—',
+    gutTrigger:document.getElementById('gut-trigger').value||'',
+    mood:S.mood||'—',anxiety:S.anxiety||'—',
+    headache:S.headache||'—',neck:S.neck||'—',
+    period:S.period||'—',flow:S.flow||'—',
+    symBreast:S.symptoms.breast||'—',symCramp:S.symptoms.cramp||'—',
+    symLymph:S.symptoms.lymph||'—',symPmood:S.symptoms.pmood||'—',
+    ces:S.ces||'—',cesH:S.cesH,
+    meds:S.meds?'是':'否',reduce:S.reduce?'是':'否',
+    drugNote:document.getElementById('drug-note').value||'',
+    exercise:S.exercise.length?S.exercise.join('、'):'無',
+    otherExercise:otherEx||'',
+    sleepSummary:S.sleepSummary||'',
+    dreamNote:document.getElementById('dream-note').value||'',
+    note:document.getElementById('daily-note').value||''
+  };
+  const logs=getLogs();
+  const idx=logs.findIndex(l=>l.date===log.date);
+  if(idx>=0)logs[idx]=log;else logs.unshift(log);
+  logs.sort((a,b)=>b.date.localeCompare(a.date));
+  localStorage.setItem(LOGS_KEY,JSON.stringify(logs));
+  btn.disabled=false;
+  st.className='sync-status ok';
+  st.textContent='✓ 已儲存';
+  syncSheet(log,st).catch(()=>{});
+}
+
+function getLogs(){try{return JSON.parse(localStorage.getItem(LOGS_KEY)||'[]');}catch{return[];}}
+
+async function syncSheet(log,stEl){
+  try{
+    const res=await fetch(APPS_SCRIPT_URL,{
+      method:'POST',
+      body:JSON.stringify(log)
+    });
+    const data=await res.json();
+    if(data.status==='ok'){
+      stEl.className='sync-status ok';
+      stEl.textContent='✓ 已儲存並同步到 Google Sheet';
+    } else {
+      throw new Error(data.message||'未知錯誤');
+    }
+  }catch(e){
+    stEl.className='sync-status err';
+    stEl.textContent='⚠ 已儲存在本地，同步失敗（'+(e.message||'請稍後再試')+'）';
+  }
+}
+
+async function loadFromSheet(){
+  try{
+    const res=await fetch(APPS_SCRIPT_URL+'?action=get');
+    const data=await res.json();
+    if(data.logs&&data.logs.length){
+      // Merge with local, sheet wins for same date
+      const local=getLogs();
+      const localDates=new Set(local.map(l=>l.date));
+      const merged=[...local];
+      data.logs.forEach(l=>{
+        if(l['日期']){
+          // Map Chinese headers back to English keys
+          const mapped={
+            date:l['日期'],sleepStart:l['入睡'],sleepEnd:l['起床'],
+            sleepTotal:l['總睡眠'],sleepDeep:l['深層'],sleepREM:l['REM'],
+            sleepAwake:l['清醒%'],wake:l['夜醒'],wakeup:l['起床感'],
+            gut:l['腸胃'],bloat:l['脹氣'],diarrhea:l['拉肚子'],
+            gerd:l['胃食道逆流'],gutTrigger:l['腸胃觸發'],
+            mood:l['心情'],anxiety:l['焦慮'],headache:l['頭痛'],
+            neck:l['肩頸'],period:l['月經'],flow:l['經血'],
+            symBreast:l['脹奶'],symCramp:l['下腹悶痛'],
+            symLymph:l['腋下淋巴'],symPmood:l['情緒波動'],
+            ces:l['CES'],cesH:l['CES時數'],meds:l['照常服藥'],
+            reduce:l['減藥日'],drugNote:l['藥物備註'],
+            exercise:l['運動'],otherExercise:l['其他運動'],
+            sleepSummary:l['睡眠總結'],dreamNote:l['夢境'],note:l['今天一句話']
+          };
+          const idx=merged.findIndex(m=>m.date===mapped.date);
+          if(idx>=0)merged[idx]=mapped;
+          else merged.push(mapped);
+        }
+      });
+      merged.sort((a,b)=>b.date.localeCompare(a.date));
+      localStorage.setItem(LOGS_KEY,JSON.stringify(merged));
+      return merged.length;
+    }
+    return 0;
+  }catch(e){
+    console.log('載入 Sheet 失敗:',e.message);
+    return 0;
+  }
+}
+
+function showLink(id){const l=document.getElementById('sheet-link');l.href=`https://docs.google.com/spreadsheets/d/${id}`;l.style.display='block';}
+
+// ── HISTORY ──
+function showPage(n){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+n).classList.add('active');
+  document.getElementById('nav-'+n).classList.add('active');
+  if(n==='history')renderHistory();
+}
+
+function renderHistory(){
+  const logs=getLogs();const c=document.getElementById('history-list');
+  if(!logs.length){c.innerHTML='<div class="empty-state">還沒有記錄<br><span style="font-size:13px;color:var(--dim);">儲存第一天後會出現在這裡</span></div>';return;}
+  const mE={'1':'🌑','2':'🌘','3':'🌗','4':'🌔','5':'🌕'};
+  const gE={'1':'😣','2':'😞','3':'😐','4':'🙂','5':'😊'};
+  function fmtDate(s){
+    const[y,m,d]=s.split('-');
+    const days=['日','一','二','三','四','五','六'];
+    const w=new Date(+y,+m-1,+d).getDay();
+    const today=todayStr(),yd=ydStr();
+    const pre=s===today?'今天・':s===yd?'昨天・':'';
+    return`${pre}${y}/${m}/${d}（週${days[w]}）`;
+  }
+  c.innerHTML=logs.map((l,i)=>{
+    const sp=[];
+    if(l.symBreast==='有')sp.push('脹奶');if(l.symCramp==='有')sp.push('下腹痛');
+    if(l.symLymph==='有')sp.push('腋下腫');if(l.symPmood==='有')sp.push('情緒波動');
+    const exDisplay=l.exercise==='無'?'無':(l.exercise+(l.otherExercise?`（${l.otherExercise}）`:''));
+    return`<div class="history-card" onclick="showDetail(${i})">
+      <div class="history-date">${fmtDate(l.date)}</div>
+      <div class="history-row"><span class="lbl">睡眠</span><span>${l.sleepStart}–${l.sleepEnd} ${l.sleepTotal}</span><span class="pip">${mE[l.wakeup]||''}起床${l.wakeup}</span></div>
+      <div class="history-row"><span class="lbl">腸胃</span><span class="pip">${gE[l.gut]||''}整體${l.gut}</span><span class="pip">脹${l.bloat}</span><span class="pip">逆流${l.gerd}</span></div>
+      <div class="history-row"><span class="lbl">心情</span><span class="pip">${mE[l.mood]||''}${l.mood}</span><span class="pip">焦慮${l.anxiety}</span>${l.headache!=='無'&&l.headache!=='—'?`<span class="pip" style="color:var(--err)">頭痛${l.headache}</span>`:''}</div>
+      ${l.period!=='無'&&l.period!=='—'?`<div class="history-row"><span class="lbl">月經</span><span class="pip" style="color:var(--pink)">🌸${l.period}</span>${sp.length?`<span class="pip" style="color:var(--lav)">${sp.join('・')}</span>`:''}</div>`:(sp.length?`<div class="history-row"><span class="lbl">症狀</span><span class="pip" style="color:var(--lav)">${sp.join('・')}</span></div>`:'')}
+      <div class="history-row"><span class="lbl">CES</span><span>${l.ces} ${l.cesH}h</span></div>
+      ${exDisplay!=='無'?`<div class="history-row"><span class="lbl">運動</span><span>${exDisplay}</span></div>`:''}
+      ${l.note?`<div class="history-row" style="margin-top:5px;color:var(--ink);font-style:italic;">"${l.note}"</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function showDetail(i){
+  const logs=getLogs();
+  function fmtDate(s){const[y,m,d]=s.split('-');const days=['日','一','二','三','四','五','六'];const w=new Date(+y,+m-1,+d).getDay();return`${y}/${m}/${d}（週${days[w]}）`;}
+  const l=logs[i];if(!l)return;
+  const sym=[`脹奶:${l.symBreast}`,`下腹:${l.symCramp}`,`腋下:${l.symLymph}`,`情緒:${l.symPmood}`].join('　');
+  document.getElementById('modal-title').textContent=fmtDate(l.date);
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-row"><div class="key">睡眠</div>${l.sleepStart}→${l.sleepEnd}　${l.sleepTotal}<br>深層${l.sleepDeep} REM${l.sleepREM} 清醒${l.sleepAwake}<br>夜醒${l.wake}次　起床感${l.wakeup}/5</div>
+    <div class="modal-row"><div class="key">腸胃</div>整體${l.gut}/5　脹氣${l.bloat}/4　拉肚子${l.diarrhea}/4　逆流${l.gerd}/4${l.gutTrigger?'<br>觸發：'+l.gutTrigger:''}</div>
+    <div class="modal-row"><div class="key">心情</div>情緒${l.mood}/5　焦慮：${l.anxiety}</div>
+    <div class="modal-row"><div class="key">身體</div>頭痛：${l.headache}　肩頸：${l.neck}</div>
+    <div class="modal-row"><div class="key">月經</div>${l.period}${l.flow!=='—'?' '+l.flow:''}</div>
+    <div class="modal-row"><div class="key">女性症狀</div>${sym}</div>
+    <div class="modal-row"><div class="key">CES</div>${l.ces}　${l.cesH}小時</div>
+    <div class="modal-row"><div class="key">藥物</div>照常：${l.meds}　減藥日：${l.reduce}${l.drugNote?'<br>'+l.drugNote:''}</div>
+    <div class="modal-row"><div class="key">運動</div>${l.exercise}${l.otherExercise?'（'+l.otherExercise+'）':''}</div>
+    ${l.note?`<div class="modal-row"><div class="key">今天</div>${l.note}</div>`:''}`;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function migrateLogs(){
+  const oldKeys=['rs_logs_v5','rs_logs_v4','rs_logs_v3','rs_logs','recharge_logs'];
+  let existing=[];
+  try{existing=JSON.parse(localStorage.getItem(LOGS_KEY)||'[]');}catch{}
+  const existingDates=new Set(existing.map(l=>l.date));
+  oldKeys.forEach(k=>{
+    try{
+      const old=JSON.parse(localStorage.getItem(k)||'[]');
+      old.forEach(l=>{if(l.date&&!existingDates.has(l.date)){existing.push(l);existingDates.add(l.date);}});
+    }catch{}
+  });
+  existing.sort((a,b)=>b.date.localeCompare(a.date));
+  if(existing.length)localStorage.setItem(LOGS_KEY,JSON.stringify(existing));
+}
+
+// ── INIT ──
+(async function init(){
+  migrateLogs();
+  initDateInput();
+  // Try to load from Google Sheet in background (silently)
+  loadFromSheet().then(count=>{
+    if(count>0){
+      const st=document.getElementById('sync-status');
+      st.className='sync-status ok';
+      st.textContent=`✓ 已從 Google Sheet 載入 ${count} 筆記錄`;
+      // Reload today's form with fresh data
+      loadDateIntoForm(todayStr());
+      renderHistory();
+    }
+  }).catch(()=>{});
+  const link=document.getElementById('sheet-link');
+  link.href='https://docs.google.com/spreadsheets/';
+  link.style.display='block';
+})();
+</script>
+</body>
+</html>
