@@ -993,10 +993,12 @@ async function loadFromSheet(){
   try{
     const res=await fetch(APPS_SCRIPT_URL+'?action=get');
     const data=await res.json();
+    let count=0;
+
+    // Load daily logs
     if(data.logs&&data.logs.length){
       const local=getLogs();
       const merged=[...local];
-      const localDates=new Set(local.map(l=>l.date));
       data.logs.forEach(l=>{
         if(!l.date)return;
         const idx=merged.findIndex(m=>m.date===l.date);
@@ -1005,9 +1007,22 @@ async function loadFromSheet(){
       });
       merged.sort((a,b)=>b.date.localeCompare(a.date));
       localStorage.setItem(LOGS_KEY,JSON.stringify(merged));
-      return merged.length;
+      count=merged.length;
     }
-    return 0;
+
+    // Load gut logs
+    if(data.gutLogs&&data.gutLogs.length){
+      const localGut=getGutLogs();
+      const existingIds=new Set(localGut.map(e=>String(e.id)));
+      const merged=[...localGut];
+      data.gutLogs.forEach(e=>{
+        if(!existingIds.has(String(e.id)))merged.push({...e,id:+e.id||Date.now()});
+      });
+      merged.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+      localStorage.setItem(GUT_KEY,JSON.stringify(merged));
+    }
+
+    return count;
   }catch(e){console.log('Sheet load failed:',e.message);return 0;}
 }
 
@@ -1038,14 +1053,21 @@ function migrateLogs(){
   initDateInput();
   loadDateIntoForm(todayStr());
   document.getElementById('sheet-link').style.display='block';
+  const st=document.getElementById('sync-status');
+  st.className='sync-status loading';
+  st.textContent='正在從 Google Sheet 載入記錄…';
   loadFromSheet().then(count=>{
     if(count>0){
-      const st=document.getElementById('sync-status');
       st.className='sync-status ok';
-      st.textContent=`✓ 已從 Google Sheet 載入 ${count} 筆記錄`;
+      st.textContent=`✓ 已載入 ${count} 筆記錄`;
       loadDateIntoForm(todayStr());
+      // If history page is visible, refresh it
+      if(document.getElementById('page-history').classList.contains('active'))renderHistory();
+      if(document.getElementById('page-gut').classList.contains('active')){renderGutDateBar();renderGutList();}
+    } else {
+      st.textContent='';
     }
-  }).catch(()=>{});
+  }).catch(()=>{st.textContent='';});
 })();
 </script>
 </body>
