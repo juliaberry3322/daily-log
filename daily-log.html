@@ -980,63 +980,61 @@ function closeModal(){document.getElementById('modal').classList.remove('open');
 // ── SHEET SYNC ──
 async function syncSheet(log,stEl){
   try{
-    const res=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({type:'log',...log})});
-    const data=await res.json();
-    if(data.status==='ok'){stEl.className='sync-status ok';stEl.textContent='✓ 已儲存並同步到 Google Sheet';}
-    else throw new Error(data.message||'未知錯誤');
+    await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({type:'log',...log})});
+    stEl.className='sync-status ok';stEl.textContent='✓ 已儲存並同步';
   }catch(e){stEl.className='sync-status err';stEl.textContent='⚠ 已儲存在本地，同步失敗';}
 }
 
 async function syncGutEntry(entry){
-  try{
-    await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({type:'gut',...entry})});
-  }catch(e){console.log('gut sync failed',e.message);}
+  try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({type:'gut',...entry})});}
+  catch(e){console.log('gut sync failed');}
 }
 
-async function loadFromSheet(){
-  try{
-    const res=await fetch(APPS_SCRIPT_URL+'?action=get');
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    let count=0;
-
-    if(data.logs&&data.logs.length){
-      const local=getLogs();
-      const merged=[...local];
-      data.logs.forEach(l=>{
-        if(!l.date)return;
-        // Normalize date: 2026-05-03 or 2026/05/03 → 2026-05-03
-        const dateStr=String(l.date).trim().replace(/\//g,'-').substring(0,10);
-        if(!dateStr.match(/^\d{4}-\d{2}-\d{2}$/))return;
-        const normalized={...l,date:dateStr};
-        const idx=merged.findIndex(m=>m.date===dateStr);
-        if(idx>=0){
-          Object.keys(normalized).forEach(k=>{
-            const v=normalized[k];
-            if(v!==undefined&&v!==null&&v!==''&&v!=='—')merged[idx][k]=v;
+function loadFromSheet(){
+  return new Promise((resolve)=>{
+    const cbName='_gscb'+Date.now();
+    const script=document.createElement('script');
+    const timer=setTimeout(()=>{
+      cleanup();console.log('Sheet load timeout');resolve(0);
+    },12000);
+    function cleanup(){
+      clearTimeout(timer);
+      delete window[cbName];
+      try{if(script.parentNode)script.parentNode.removeChild(script);}catch(e){}
+    }
+    window[cbName]=function(data){
+      cleanup();
+      try{
+        let count=0;
+        if(data.logs&&data.logs.length){
+          const local=getLogs();const merged=[...local];
+          data.logs.forEach(l=>{
+            if(!l.date)return;
+            const dateStr=String(l.date).trim().replace(/\//g,'-').substring(0,10);
+            if(!dateStr.match(/^\d{4}-\d{2}-\d{2}$/))return;
+            const norm={...l,date:dateStr};
+            const idx=merged.findIndex(m=>m.date===dateStr);
+            if(idx>=0){Object.keys(norm).forEach(k=>{const v=norm[k];if(v!==undefined&&v!==null&&v!==''&&v!=='—')merged[idx][k]=v;});}
+            else merged.push(norm);
           });
-        }else{
-          merged.push(normalized);
+          merged.sort((a,b)=>b.date.localeCompare(a.date));
+          localStorage.setItem(LOGS_KEY,JSON.stringify(merged));
+          count=merged.length;
         }
-      });
-      merged.sort((a,b)=>b.date.localeCompare(a.date));
-      localStorage.setItem(LOGS_KEY,JSON.stringify(merged));
-      count=merged.length;
-    }
-
-    if(data.gutLogs&&data.gutLogs.length){
-      const localGut=getGutLogs();
-      const existingIds=new Set(localGut.map(e=>String(e.id)));
-      const merged=[...localGut];
-      data.gutLogs.forEach(e=>{
-        if(!existingIds.has(String(e.id)))merged.push({...e,id:+e.id||Date.now()});
-      });
-      merged.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
-      localStorage.setItem(GUT_KEY,JSON.stringify(merged));
-    }
-
-    return count;
-  }catch(e){console.log('Sheet load failed:',e.message);return 0;}
+        if(data.gutLogs&&data.gutLogs.length){
+          const localGut=getGutLogs();const existingIds=new Set(localGut.map(e=>String(e.id)));
+          const merged=[...localGut];
+          data.gutLogs.forEach(e=>{if(!existingIds.has(String(e.id)))merged.push({...e,id:+e.id||Date.now()});});
+          merged.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+          localStorage.setItem(GUT_KEY,JSON.stringify(merged));
+        }
+        resolve(count);
+      }catch(e){console.log('parse err',e);resolve(0);}
+    };
+    script.onerror=()=>{cleanup();resolve(0);};
+    script.src=APPS_SCRIPT_URL+'?action=get&callback='+cbName;
+    document.body.appendChild(script);
+  });
 }
 
 async function reloadFromSheet(){
