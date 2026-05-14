@@ -849,6 +849,54 @@ function saveEntry(){
   syncGutEntry(entry);
 }
 
+function editEntry(id){
+  const logs=getGutLogs();
+  const entry=logs.find(e=>e.id===id);
+  if(!entry)return;
+  // Open sheet with existing data
+  document.getElementById('entry-date').value=entry.date;
+  document.getElementById('entry-time').value=entry.time;
+  document.getElementById('entry-desc').value=entry.desc;
+  // Set type
+  document.querySelectorAll('.type-btn').forEach(b=>b.className='type-btn');
+  const typeBtn=document.querySelector(`[data-t="${entry.type}"]`);
+  if(typeBtn)selectEntryType(entry.type,typeBtn);
+  // Set subtype if symptom
+  if(entry.subtype){S.stype=entry.subtype;const sb=document.querySelector(`[data-g="stype"][data-v="${entry.subtype}"]`);if(sb)sb.click();}
+  // Set severity
+  if(entry.severity){S.entrySev=entry.severity;const sevBtn=Array.from(document.querySelectorAll('.sev-btn')).find(b=>b.dataset.s===entry.severity);if(sevBtn){const lvl=entry.severity==='輕微'?'mild':entry.severity==='中等'?'mod':'sev';selectSev(sevBtn,lvl);}}
+  // Change save button to update
+  const saveBtn=document.querySelector('#entry-sheet button[onclick="saveEntry()"]');
+  if(saveBtn){
+    saveBtn.textContent='更新這筆記錄';
+    saveBtn.onclick=()=>updateEntry(id);
+  }
+  document.getElementById('entry-sheet').classList.add('open');
+  document.getElementById('sheet-overlay').classList.add('open');
+}
+
+function updateEntry(id){
+  const date=document.getElementById('entry-date').value;
+  const time=document.getElementById('entry-time').value;
+  const desc=document.getElementById('entry-desc').value.trim();
+  const type=S.entryType;
+  if(!time||!type||!desc){alert('請填寫時間、類型和內容');return;}
+  const logs=getGutLogs();
+  const idx=logs.findIndex(e=>e.id===id);
+  if(idx>=0){
+    logs[idx]={...logs[idx],date,time,type,desc,subtype:S.stype||'',severity:S.entrySev||''};
+    logs.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+    localStorage.setItem(GUT_KEY,JSON.stringify(logs));
+  }
+  gutCurrentDate=date;
+  closeEntrySheet();
+  // Reset save button
+  const saveBtn=document.querySelector('#entry-sheet button');
+  if(saveBtn){saveBtn.textContent='新增這筆記錄';saveBtn.onclick=saveEntry;}
+  renderGutDateBar();
+  renderGutList();
+}
+
 function deleteEntry(id){
   const logs=getGutLogs().filter(e=>e.id!==id);
   localStorage.setItem(GUT_KEY,JSON.stringify(logs));
@@ -887,7 +935,8 @@ function renderGutList(){
       <div class="tl-time">${e.time}</div>
       <div class="tl-dot ${e.type}"></div>
       <div class="tl-content">
-        <span class="tl-delete" onclick="deleteEntry(${e.id})">×</span>
+        <span class="tl-delete" onclick="deleteEntry(${e.id})" style="margin-left:6px;">×</span>
+        <span class="tl-delete" onclick="editEntry(${e.id})" style="color:var(--accent);">✏️</span>
         <div class="tl-content-type ${e.type}">${typeLabel[e.type]||e.type}${e.subtype?' · '+e.subtype:''}</div>
         <div class="tl-content-text">${e.desc}</div>
         ${e.severity?`<span class="tl-content-sev ${sevTag[e.severity]||''}">${e.severity}</span>`:''}
@@ -1128,11 +1177,42 @@ function migrateLogs(){
 
   // Seed historical data if not present
   const historical=[{"date":"2026-05-03","sleepStart":"23:00","sleepEnd":"08:39","sleepTotal":"5h39m","sleepDeep":"21%","sleepREM":"6%","sleepAwake":"25%","wake":"3+","wakeup":"1","sleepquality":"—","mood":"4","anxiety":"明顯","headache":"輕微","neck":"嚴重","period":"無","flow":"—","symBreast":"有","symCramp":"—","symLymph":"有","symPmood":"—","ces":"沒做","cesH":0,"meds":"是","reduce":"否","drugNote":"","exercise":"無","otherExercise":"","sleepSummary":"深層21%（正常15-23%），REM 6%／20分鐘（正常20-25%／70-85分鐘），清醒25%（正常<5%）。// REM嚴重不足，僅20分鐘，情緒記憶處理幾乎沒有進行。// ⚠️ 這天情緒可能較敏感，焦慮感偏高，腸胃也容易受影響。","dreamNote":"","note":"","gut":"3","bloat":"3","diarrhea":"2","gerd":"2","gutTrigger":""},{"date":"2026-05-04","sleepStart":"00:00","sleepEnd":"09:21","sleepTotal":"9h21m","sleepDeep":"28%","sleepREM":"17%","sleepAwake":"16%","wake":"3+","wakeup":"2","sleepquality":"—","mood":"4","anxiety":"明顯","headache":"明顯","neck":"明顯","period":"無","flow":"—","symBreast":"有","symCramp":"—","symLymph":"有","symPmood":"—","ces":"有做","cesH":1,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"無","otherExercise":"","sleepSummary":"深層28%（正常15-23%），REM 17%／95分鐘（正常20-25%／70-85分鐘），清醒16%（正常<5%）。// 補眠成功，深層超標代表身體積極修復，REM略低但時長達標。今天精力和情緒應明顯較好。// ⚠️ 清醒16%仍偏高，睡眠還不穩定。避免熬夜，睡前一小時減少刺激。","dreamNote":"夢到我跟安豬（弟弟）在我們老家 但又很像飯店，我好像一直看到鬼👻 超級可怕","note":"","gut":"3","bloat":"2","diarrhea":"2","gerd":"3","gutTrigger":""},{"date":"2026-05-05","sleepStart":"00:00","sleepEnd":"11:13","sleepTotal":"8h31m","sleepDeep":"15%","sleepREM":"15%","sleepAwake":"9%","wake":"3+","wakeup":"1","sleepquality":"非常淺眠","mood":"4","anxiety":"輕微","headache":"嚴重","neck":"嚴重","period":"無","flow":"—","symBreast":"有","symCramp":"—","symLymph":"有","symPmood":"—","ces":"有做","cesH":2.5,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"無","otherExercise":"","sleepSummary":"深層15%（正常15-23%），REM 15%／77分鐘（正常20-25%／70-85分鐘），清醒9%（正常<5%）。// 睡眠時長和結構都明顯改善，三天來最穩定。REM時長首次達標，深層剛好在正常下限。// ⚠️ 清醒9%仍略偏高，但趨勢在變好。今天可以嘗試安排稍微有結構的活動。","dreamNote":"夢到跟暐淳還有不知道是誰的其他兩個人 一起在大陸出差 還叫不到滴滴","note":"今天按摩了！還久違吃了麥當勞現炸的薯條 很棒","gut":"4","bloat":"3","diarrhea":"3","gerd":"3","gutTrigger":""},{"date":"2026-05-06","sleepStart":"02:39","sleepEnd":"10:55","sleepTotal":"7h06m","sleepDeep":"13%","sleepREM":"5%","sleepAwake":"15%","wake":"3+","wakeup":"2","sleepquality":"—","mood":"—","anxiety":"—","headache":"—","neck":"—","period":"—","flow":"—","symBreast":"—","symCramp":"—","symLymph":"—","symPmood":"—","ces":"—","cesH":0,"meds":"是","reduce":"否","drugNote":"","exercise":"無","otherExercise":"","sleepSummary":"深層13%（正常15-23%），REM 5%／21分鐘（正常20-25%／70-85分鐘），清醒15%（正常<5%）。// 深層和REM都低於正常值，Core 67%極高代表大部分時間停留在最淺層睡眠，身體修復效率差。// ⚠️ 今天可能有腦霧、情緒敏感、腸胃不穩定。避免高強度決策，給自己緩衝空間。","dreamNote":"","note":"","gut":"—","bloat":"—","diarrhea":"—","gerd":"—","gutTrigger":""},{"date":"2026-05-07","sleepStart":"01:03","sleepEnd":"12:24","sleepTotal":"7h48m","sleepDeep":"14%","sleepREM":"15%","sleepAwake":"6%","wake":"1","wakeup":"3","sleepquality":"—","mood":"4","anxiety":"輕微","headache":"輕微","neck":"輕微","period":"無","flow":"—","symBreast":"有","symCramp":"有","symLymph":"有","symPmood":"—","ces":"沒做","cesH":0,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"無","otherExercise":"","sleepSummary":"深層14%（正常15-23%），REM 15%／70分鐘（正常20-25%／70-85分鐘），清醒6%（正常<5%）。// 清醒比例首次接近正常值，REM時長剛好達標。深層略低但整體是這週最穩定的一晚。// ⚠️ Core 65%仍偏高，淺眠比例還是多。今天狀態應比前幾天好，但還不算真正恢復。","dreamNote":"","note":"","gut":"3","bloat":"3","diarrhea":"3","gerd":"3","gutTrigger":"黃體囊腫破裂伴隨濾泡液"},{"date":"2026-05-08","sleepStart":"00:33","sleepEnd":"10:30","sleepTotal":"5h50m","sleepDeep":"16%","sleepREM":"10%","sleepAwake":"29%","wake":"3+","wakeup":"1","sleepquality":"—","mood":"2","anxiety":"無","headache":"輕微","neck":"輕微","period":"無","flow":"—","symBreast":"有","symCramp":"有","symLymph":"有","symPmood":"—","ces":"有做","cesH":0,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"網球課","otherExercise":"","sleepSummary":"深層16%（正常15-23%），REM 10%／35分鐘（正常20-25%／70-85分鐘），清醒29%（正常<5%）。// 清醒29%極高，相當於睡眠中有超過1.5小時是醒著的，REM只有35分鐘不到一半。// ⚠️ 今天疲倦感會明顯，情緒容易波動，腸胃也可能不穩。盡量不安排耗神的事。","dreamNote":"","note":"","gut":"1","bloat":"1","diarrhea":"1","gerd":"1","gutTrigger":"昨天的骨盆積水還在痛 拉肚子*10💩💩"},{"date":"2026-05-09","sleepStart":"01:19","sleepEnd":"10:18","sleepTotal":"6h59m","sleepDeep":"12%","sleepREM":"14%","sleepAwake":"20%","wake":"2","wakeup":"2","sleepquality":"—","mood":"—","anxiety":"—","headache":"—","neck":"—","period":"—","flow":"—","symBreast":"—","symCramp":"—","symLymph":"—","symPmood":"—","ces":"—","cesH":0,"meds":"是","reduce":"否","drugNote":"","exercise":"無","otherExercise":"","sleepSummary":"深層12%（正常15-23%），REM 14%／58分鐘（正常20-25%／70-85分鐘），清醒20%（正常<5%）。// 深層和REM都低於正常，清醒20%代表約1.4小時在淺眠掙扎。整體品質偏差。// ⚠️ 今天可能疲倦、情緒較敏感。腸胃也可能不穩，避免刺激性食物。","dreamNote":"","note":"","gut":"—","bloat":"—","diarrhea":"—","gerd":"—","gutTrigger":""},{"date":"2026-05-10","sleepStart":"00:14","sleepEnd":"08:44","sleepTotal":"7h48m","sleepDeep":"14%","sleepREM":"15%","sleepAwake":"8%","wake":"2","wakeup":"2","sleepquality":"—","mood":"5","anxiety":"輕微","headache":"輕微","neck":"明顯","period":"無","flow":"—","symBreast":"有","symCramp":"—","symLymph":"有","symPmood":"—","ces":"沒做","cesH":0,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"匹克球","otherExercise":"","sleepSummary":"深層14%（正常15-23%），REM 15%／70分鐘（正常20-25%／70-85分鐘），清醒8%（正常<5%）。// 清醒從15%降回8%，REM回到70分鐘——昨晚有明顯改善。今天狀態應比昨天好。// ⚠️ 深層略低，繼續維持睡眠節律。","dreamNote":"我以為只有醒來兩三次 沒想到睡得這麼差？","note":"要記得看見自己的進步","gut":"3","bloat":"3","diarrhea":"3","gerd":"3","gutTrigger":""},{"date":"2026-05-11","sleepStart":"00:26","sleepEnd":"11:35","sleepTotal":"9h27m","sleepDeep":"18%","sleepREM":"12%","sleepAwake":"11%","wake":"3+","wakeup":"2","sleepquality":"—","mood":"—","anxiety":"—","headache":"—","neck":"—","period":"—","flow":"—","symBreast":"—","symCramp":"—","symLymph":"—","symPmood":"—","ces":"—","cesH":0,"meds":"是","reduce":"否","drugNote":"","exercise":"無","otherExercise":"","sleepSummary":"深層18%（正常15-23%），REM 12%／68分鐘（正常20-25%／70-85分鐘），清醒11%（正常<5%）。// 深層首次回到正常範圍，時長也是近兩週最長。REM略低但時長接近達標。// ⚠️ 清醒11%仍偏高，但整體是明顯進步。今天應該有足夠精力，適合安排想做的事。","dreamNote":"","note":"","gut":"—","bloat":"—","diarrhea":"—","gerd":"—","gutTrigger":""},{"date":"2026-05-12","sleepStart":"03:36","sleepEnd":"09:23","sleepTotal":"5h20m","sleepDeep":"19%","sleepREM":"13%","sleepAwake":"8%","wake":"2","wakeup":"2","sleepquality":"偶爾清醒","mood":"4","anxiety":"無","headache":"明顯","neck":"明顯","period":"無","flow":"—","symBreast":"有","symCramp":"—","symLymph":"—","symPmood":"—","ces":"有做","cesH":0,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"散步","otherExercise":"","sleepSummary":"深層19%（正常15-23%），REM 13%／42分鐘（正常20-25%／70-85分鐘），清醒8%（正常<5%）。// REM時長偏低，整體品質中等。// ⚠️ 可能有輕微疲倦感，留意情緒敏感。","dreamNote":"","note":"","gut":"3","bloat":"2","diarrhea":"3","gerd":"1","gutTrigger":"晚餐吃太飽、一次喝太多甜的跟炸的"}];
-  historical.forEach(l=>{if(!existingDates.has(l.date)){existing.push(l);existingDates.add(l.date);}});
+  historical.forEach(l=>{
+    const idx=existing.findIndex(e=>e.date===l.date);
+    if(idx>=0){Object.keys(l).forEach(k=>{if(!existing[idx][k]||existing[idx][k]==='—')existing[idx][k]=l[k];});}
+    else{existing.push(l);existingDates.add(l.date);}
+  });
+
+  // Add 5/13 and 5/14 data
+  const extra=[
+    {"date":"2026-05-13","sleepStart":"03:36","sleepEnd":"09:23","sleepTotal":"5h20m","sleepDeep":"19%","sleepREM":"13%","sleepAwake":"8%","wake":"2","wakeup":"2","sleepquality":"偶爾清醒","mood":"1","anxiety":"嚴重","headache":"明顯","neck":"明顯","period":"經期第1天","flow":"痛經明顯","symBreast":"—","symCramp":"有","symLymph":"有","symPmood":"有","ces":"有做","cesH":60,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"其他","otherExercise":"騎車","sleepSummary":"深層19%（正常15-23%），REM 13%／42分鐘（正常20-25%／70-85分鐘），清醒8%（正常<5%）。// REM時長偏低，整體品質中等。// ⚠️ 可能有輕微疲倦感，留意情緒敏感。","dreamNote":"","note":""},
+    {"date":"2026-05-14","sleepStart":"01:01","sleepEnd":"11:31","sleepTotal":"8h01m","sleepDeep":"21%","sleepREM":"12%","sleepAwake":"13%","wake":"3+","wakeup":"1","sleepquality":"偶爾清醒","mood":"—","anxiety":"—","headache":"—","neck":"—","period":"—","flow":"—","symBreast":"—","symCramp":"—","symLymph":"—","symPmood":"—","ces":"有做","cesH":60,"meds":"是","reduce":"否","drugNote":"Gaba*2","exercise":"其他","otherExercise":"騎車","sleepSummary":"深層21%（正常15-23%），REM 12%／58分鐘（正常20-25%／70-85分鐘），清醒13%（正常<5%）。// 深層達標，REM略低。清醒比例仍偏高，睡眠還不夠穩定。// ⚠️ 今天狀態中等，避免高壓安排。","dreamNote":"","note":""}
+  ];
+  extra.forEach(l=>{
+    const idx=existing.findIndex(e=>e.date===l.date);
+    if(idx>=0){Object.keys(l).forEach(k=>{if(!existing[idx][k]||existing[idx][k]==='—')existing[idx][k]=l[k];});}
+    else{existing.push(l);}
+  });
 
   oldKeys.forEach(k=>{try{const old=JSON.parse(localStorage.getItem(k)||'[]');old.forEach(l=>{if(l.date&&!existingDates.has(l.date)){existing.push(l);existingDates.add(l.date);}});}catch{}});
   existing.sort((a,b)=>b.date.localeCompare(a.date));
   localStorage.setItem(LOGS_KEY,JSON.stringify(existing));
+
+  // Seed gut log
+  const gutSeed=[
+    {"id":1715500800001,"date":"2026-05-12","time":"14:00","type":"food","desc":"午餐：清粥小菜 白粥 高麗菜 白菜滷 炒蛋","subtype":"","severity":""},
+    {"id":1715500800002,"date":"2026-05-12","time":"14:29","type":"drink","desc":"大概200ml 無糖 蜜桃烏龍","subtype":"","severity":""},
+    {"id":1715500800003,"date":"2026-05-12","time":"14:47","type":"drink","desc":"高蛋白：25.7克蛋白質 木瓜牛奶口味+無乳糖牛奶350ml 午餐份量很少 所以補充","subtype":"","severity":""},
+    {"id":1715500800004,"date":"2026-05-12","time":"19:30","type":"food","desc":"晚餐：雞湯 雞腿 高麗菜 金針菇 木耳 水煮白麵麵線","subtype":"","severity":""}
+  ];
+  try{
+    let gutExisting=[];
+    try{gutExisting=JSON.parse(localStorage.getItem(GUT_KEY)||'[]');}catch{}
+    const gutIds=new Set(gutExisting.map(e=>String(e.id)));
+    gutSeed.forEach(e=>{if(!gutIds.has(String(e.id)))gutExisting.push(e);});
+    gutExisting.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+    localStorage.setItem(GUT_KEY,JSON.stringify(gutExisting));
+  }catch(e){console.log('gut seed error',e);}
 }
 
 // ── INIT ──
