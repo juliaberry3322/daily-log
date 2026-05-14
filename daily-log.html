@@ -509,6 +509,13 @@ body{background:var(--bg)!important;color:var(--ink)!important;font-family:'Noto
     <button onclick="reloadFromSheet()" style="margin-top:14px;width:100%;padding:11px;background:var(--accent-bg)!important;border:1px solid var(--accent-bd);border-radius:8px;color:var(--accent);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;letter-spacing:0.05em;">
       🔄 從 Google Sheet 重新載入記錄
     </button>
+    <button onclick="showImportPanel()" style="margin-top:8px;width:100%;padding:11px;background:var(--surface2)!important;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+      📥 貼上資料匯入
+    </button>
+    <div id="import-panel" style="display:none;margin-top:10px;">
+      <textarea id="import-json" style="width:100%;height:80px;background:var(--surface)!important;border:1px solid var(--border);border-radius:8px;color:var(--ink);font-size:12px;padding:10px;font-family:monospace;resize:none;" placeholder="貼上 JSON 資料..."></textarea>
+      <button onclick="importData()" style="width:100%;margin-top:6px;padding:10px;background:var(--ok)!important;color:#fff;border:none;border-radius:8px;font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;">匯入</button>
+    </div>
     <div id="history-load-status" style="font-size:12px;text-align:center;margin-top:8px;min-height:18px;color:var(--muted);"></div>
   </div>
   <div class="history-list" id="history-list">
@@ -529,8 +536,16 @@ body{background:var(--bg)!important;color:var(--ink)!important;font-family:'Noto
   <div class="sheet-handle"></div>
   <div class="sheet-title" id="sheet-title">新增記錄</div>
 
-  <div class="section-sublabel" style="margin-top:0;">時間</div>
-  <input type="time" class="time-input" id="entry-time" style="width:140px;margin-bottom:14px;">
+  <div style="display:flex;gap:10px;margin-bottom:14px;">
+    <div style="flex:1;">
+      <div class="section-sublabel" style="margin-top:0;">日期</div>
+      <input type="date" class="time-input" id="entry-date" style="width:100%;">
+    </div>
+    <div>
+      <div class="section-sublabel" style="margin-top:0;">時間</div>
+      <input type="time" class="time-input" id="entry-time" style="width:130px;">
+    </div>
+  </div>
 
   <div class="section-sublabel">類型</div>
   <div class="type-grid" style="margin-bottom:14px;">
@@ -782,6 +797,9 @@ function saveLog(){
 let gutCurrentDate=todayStr();
 
 function openEntrySheet(){
+  const inp=document.getElementById('entry-date');
+  inp.max=todayStr();
+  inp.value=gutCurrentDate;
   document.getElementById('entry-time').value=nowTimeStr();
   document.getElementById('entry-desc').value='';
   document.querySelectorAll('.type-btn').forEach(b=>b.className='type-btn');
@@ -809,14 +827,14 @@ function selectSev(btn,level){
 }
 
 function saveEntry(){
+  const date=document.getElementById('entry-date').value||gutCurrentDate;
   const time=document.getElementById('entry-time').value;
   const desc=document.getElementById('entry-desc').value.trim();
   const type=S.entryType;
   if(!time||!type||!desc){alert('請填寫時間、類型和內容');return;}
   const entry={
     id:Date.now(),
-    date:gutCurrentDate,
-    time,type,desc,
+    date,time,type,desc,
     subtype:S.stype||'',
     severity:S.entrySev||''
   };
@@ -824,9 +842,10 @@ function saveEntry(){
   logs.push(entry);
   logs.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
   localStorage.setItem(GUT_KEY,JSON.stringify(logs));
+  gutCurrentDate=date;
   closeEntrySheet();
+  renderGutDateBar();
   renderGutList();
-  // Sync to sheet
   syncGutEntry(entry);
 }
 
@@ -1035,6 +1054,38 @@ function loadFromSheet(){
     script.src=APPS_SCRIPT_URL+'?action=get&callback='+cbName;
     document.body.appendChild(script);
   });
+}
+
+function showImportPanel(){
+  const p=document.getElementById('import-panel');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+function importData(){
+  const raw=document.getElementById('import-json').value.trim();
+  if(!raw){alert('請貼上資料');return;}
+  try{
+    const incoming=JSON.parse(raw);
+    const logs=Array.isArray(incoming)?incoming:(incoming.logs||[]);
+    if(!logs.length){alert('沒有找到記錄');return;}
+    const existing=getLogs();
+    const existingDates=new Set(existing.map(l=>l.date));
+    let added=0;
+    logs.forEach(l=>{
+      if(!l.date)return;
+      if(!existingDates.has(l.date)){existing.push(l);existingDates.add(l.date);added++;}
+    });
+    existing.sort((a,b)=>b.date.localeCompare(a.date));
+    localStorage.setItem(LOGS_KEY,JSON.stringify(existing));
+    document.getElementById('import-panel').style.display='none';
+    document.getElementById('import-json').value='';
+    const st=document.getElementById('history-load-status');
+    st.style.color='var(--ok)';
+    st.textContent=`✓ 匯入完成，新增 ${added} 筆記錄`;
+    renderHistory();
+  }catch(e){
+    alert('格式錯誤：'+e.message);
+  }
 }
 
 async function reloadFromSheet(){
