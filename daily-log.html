@@ -447,7 +447,7 @@ body{background:var(--bg)!important;color:var(--ink)!important;font-family:'Noto
     <div class="toggle-row"><div class="toggle-label">今天是減藥日</div><div class="toggle" id="toggle-reduce" onclick="tog(this,'reduce')"></div></div>
     <div style="height:10px;"></div>
     <textarea class="note-input" id="drug-note" placeholder="藥物備註（可不填）" rows="2"></textarea>
-    <div class="drug-note">安保思樂 100mg・美舒鬱 50mg・樂眠錠 2mg・柔拍 10mg・褪黑激素 20mg・黃體素 100mg・鎂 1000mg</div>
+    <div class="drug-note">安保思樂 100mg・美舒鬱 50mg・樂眠錠 2mg・柔拍 10mg・長效型褪黑激素 2mg・黃體素 100mg・鎂 1000mg</div>
   </div>
 
   <!-- 運動 -->
@@ -458,7 +458,7 @@ body{background:var(--bg)!important;color:var(--ink)!important;font-family:'Noto
       <button class="opt-btn" data-g="ex" data-v="自主練球" onclick="multi(this,'ok')">🎾 自主練球</button>
       <button class="opt-btn" data-g="ex" data-v="游泳" onclick="multi(this,'ok')">🏊 游泳</button>
       <button class="opt-btn" data-g="ex" data-v="芭蕾" onclick="multi(this,'ok')">🩰 芭蕾</button>
-      <button class="opt-btn" data-g="ex" data-v="皮拉提斯" onclick="multi(this,'ok')">🧘 皮拉提斯</button>
+      <button class="opt-btn" data-g="ex" data-v="器械皮拉提斯" onclick="multi(this,'ok')">🧘 器械皮拉提斯</button>
       <button class="opt-btn" data-g="ex" data-v="散步" onclick="multi(this,'ok')">🚶 散步</button>
       <button class="opt-btn" data-g="ex" data-v="匹克球" onclick="multi(this,'ok')">🏓 匹克球</button>
       <button class="opt-btn" data-g="ex" data-v="跑步" onclick="multi(this,'ok')">🏃 跑步</button>
@@ -831,7 +831,7 @@ function saveEntry(){
   const time=document.getElementById('entry-time').value;
   const desc=document.getElementById('entry-desc').value.trim();
   const type=S.entryType;
-  if(!time||!type||!desc){alert('請填寫時間、類型和內容');return;}
+  if(!time||!type){alert('請填寫時間和類型');return;}
   const entry={
     id:Date.now(),
     date,time,type,desc,
@@ -880,7 +880,7 @@ function updateEntry(id){
   const time=document.getElementById('entry-time').value;
   const desc=document.getElementById('entry-desc').value.trim();
   const type=S.entryType;
-  if(!time||!type||!desc){alert('請填寫時間、類型和內容');return;}
+  if(!time||!type){alert('請填寫時間和類型');return;}
   const logs=getGutLogs();
   const idx=logs.findIndex(e=>e.id===id);
   if(idx>=0){
