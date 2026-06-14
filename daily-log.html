@@ -929,62 +929,23 @@ const sevTag={輕微:'sev-mild-tag',中等:'sev-mod-tag',嚴重:'sev-sev-tag'};
 function renderGutList(){
   const logs=getGutLogs().filter(e=>e.date===gutCurrentDate);
   const container=document.getElementById('gut-list');
-  container.innerHTML='';
   if(!logs.length){
     container.innerHTML='<div class="empty-state">今天還沒有記錄<br><span style="font-size:12px;color:var(--dim);">點右下角 ＋ 新增飲食或症狀</span></div>';
     return;
   }
-  logs.forEach(e=>{
-    const event=document.createElement('div');
-    event.className='tl-event';
-
-    const timeEl=document.createElement('div');
-    timeEl.className='tl-time';
-    timeEl.textContent=e.time;
-
-    const dot=document.createElement('div');
-    dot.className='tl-dot '+e.type;
-
-    const content=document.createElement('div');
-    content.className='tl-content';
-
-    const delBtn=document.createElement('span');
-    delBtn.className='tl-delete';
-    delBtn.style.marginLeft='6px';
-    delBtn.textContent='×';
-    delBtn.onclick=()=>deleteEntry(e.id);
-
-    const editBtn=document.createElement('span');
-    editBtn.className='tl-delete';
-    editBtn.style.color='var(--accent)';
-    editBtn.textContent='✏️';
-    editBtn.onclick=()=>editEntry(e.id);
-
-    const typeEl=document.createElement('div');
-    typeEl.className='tl-content-type '+e.type;
-    typeEl.textContent=(typeLabel[e.type]||e.type)+(e.subtype?' · '+e.subtype:'');
-
-    const descEl=document.createElement('div');
-    descEl.className='tl-content-text';
-    descEl.textContent=e.desc;
-
-    content.appendChild(delBtn);
-    content.appendChild(editBtn);
-    content.appendChild(typeEl);
-    content.appendChild(descEl);
-
-    if(e.severity){
-      const sevEl=document.createElement('span');
-      sevEl.className='tl-content-sev '+(sevTag[e.severity]||'');
-      sevEl.textContent=e.severity;
-      content.appendChild(sevEl);
-    }
-
-    event.appendChild(timeEl);
-    event.appendChild(dot);
-    event.appendChild(content);
-    container.appendChild(event);
-  });
+  container.innerHTML=logs.map(e=>`
+    <div class="tl-event">
+      <div class="tl-time">${e.time}</div>
+      <div class="tl-dot ${e.type}"></div>
+      <div class="tl-content">
+        <span class="tl-delete" onclick="deleteEntry(${e.id})" style="margin-left:6px;">×</span>
+        <span class="tl-delete" onclick="editEntry(${e.id})" style="color:var(--accent);">✏️</span>
+        <div class="tl-content-type ${e.type}">${typeLabel[e.type]||e.type}${e.subtype?' · '+e.subtype:''}</div>
+        <div class="tl-content-text">${e.desc}</div>
+        ${e.severity?`<span class="tl-content-sev ${sevTag[e.severity]||''}">${e.severity}</span>`:''}
+      </div>
+    </div>
+  `).join('');
 }
 
 // ── HISTORY / TIMELINE ──
@@ -1058,93 +1019,30 @@ function showDayDetail(date){
     </div>`;
   }
 
-  const typeMap={'food':'🍽️ 食物','drink':'🥤 飲料','note':'📝 備註'};
+  const evHtml=events.length?events.map(e=>`
+    <div class="tl-event">
+      <div class="tl-time">${e.time}</div>
+      <div class="tl-dot ${e.type}"></div>
+      <div class="tl-content">
+        <div class="tl-content-type ${e.type==='wake-up'?'sleep':e.type}">${
+          e.type==='food'?'🍽️ 食物':e.type==='drink'?'🥤 飲料':e.type==='symptom'?'🌡️ 症狀'+(e.subtype?' · '+e.subtype:''):e.type==='note'?'📝 備註':'☀️ 起床'
+        }</div>
+        <div class="tl-content-text">${e.content}</div>
+        ${e.sev?`<span class="tl-content-sev ${sevTag[e.sev]||''}">${e.sev}</span>`:''}
+      </div>
+    </div>`).join(''):'<div style="text-align:center;padding:20px;color:var(--dim);font-size:13px;">這天沒有肚肚日記記錄</div>';
+
   const mE={'1':'🌑','2':'🌘','3':'🌗','4':'🌔','5':'🌕'};
-
-  // Build modal using DOM to avoid innerHTML injection from user content
-  const modalBody=document.getElementById('modal-body');
-  modalBody.innerHTML='';
-  const wrap=document.createElement('div');
-  wrap.style.cssText='padding:20px 20px 0;';
-
-  const dateTitle=document.createElement('div');
-  dateTitle.style.cssText="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);margin-bottom:16px;";
-  dateTitle.textContent=fmtDateFull(date);
-  wrap.appendChild(dateTitle);
-
-  if(sleepBarHtml){wrap.insertAdjacentHTML('beforeend',sleepBarHtml);}
-
-  const tlLabel=document.createElement('div');
-  tlLabel.style.cssText='font-size:11px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;';
-  tlLabel.textContent='一日時間軸';
-  wrap.appendChild(tlLabel);
-
-  const tlEvents=document.createElement('div');
-  tlEvents.className='tl-events';
-  if(!events.length){
-    const empty=document.createElement('div');
-    empty.style.cssText='text-align:center;padding:20px;color:var(--dim);font-size:13px;';
-    empty.textContent='這天沒有肚肚日記記錄';
-    tlEvents.appendChild(empty);
-  } else {
-    events.forEach(e=>{
-      const ev=document.createElement('div');
-      ev.className='tl-event';
-
-      const t=document.createElement('div');
-      t.className='tl-time';
-      t.textContent=e.time;
-
-      const dot=document.createElement('div');
-      dot.className='tl-dot '+(e.type==='wake-up'?'wake-up':e.type);
-
-      const c=document.createElement('div');
-      c.className='tl-content';
-
-      const cType=document.createElement('div');
-      cType.className='tl-content-type '+(e.type==='wake-up'?'sleep':e.type);
-      if(e.type==='symptom'){
-        cType.textContent='🌡️ 症狀'+(e.subtype?' · '+e.subtype:'');
-      } else {
-        cType.textContent=typeMap[e.type]||'☀️ 起床';
-      }
-
-      const cText=document.createElement('div');
-      cText.className='tl-content-text';
-      cText.textContent=e.content;
-
-      c.appendChild(cType);
-      c.appendChild(cText);
-
-      if(e.sev){
-        const sevEl=document.createElement('span');
-        sevEl.className='tl-content-sev '+(sevTag[e.sev]||'');
-        sevEl.textContent=e.sev;
-        c.appendChild(sevEl);
-      }
-
-      ev.appendChild(t);
-      ev.appendChild(dot);
-      ev.appendChild(c);
-      tlEvents.appendChild(ev);
-    });
-  }
-  wrap.appendChild(tlEvents);
-
-  if(log.mood&&log.mood!=='—'){
-    const moodEl=document.createElement('div');
-    moodEl.style.cssText='margin-top:16px;padding:12px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--muted);';
-    moodEl.textContent=`心情 ${mE[log.mood]||''} ${log.mood}/5　焦慮：${log.anxiety||'—'}　頭痛：${log.headache||'—'}`;
-    wrap.appendChild(moodEl);
-  }
-  if(log.note){
-    const noteEl=document.createElement('div');
-    noteEl.style.cssText='margin-top:10px;font-size:13px;color:var(--ink);font-style:italic;padding:0 2px;';
-    noteEl.textContent=`"${log.note}"`;
-    wrap.appendChild(noteEl);
-  }
-
-  modalBody.appendChild(wrap);
+  document.getElementById('modal-body').innerHTML=`
+    <div style="padding:20px 20px 0;">
+      <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent);margin-bottom:16px;">${fmtDateFull(date)}</div>
+      ${sleepBarHtml}
+      <div style="font-size:11px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">一日時間軸</div>
+      <div class="tl-events">${evHtml}</div>
+      ${log.mood&&log.mood!=='—'?`<div style="margin-top:16px;padding:12px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--muted);">心情 ${mE[log.mood]||''} ${log.mood}/5　焦慮：${log.anxiety||'—'}　頭痛：${log.headache||'—'}</div>`:''}
+      ${log.note?`<div style="margin-top:10px;font-size:13px;color:var(--ink);font-style:italic;padding:0 2px;">"${log.note}"</div>`:''}
+    </div>
+  `;
   document.getElementById('modal').classList.add('open');
 }
 
@@ -1211,8 +1109,36 @@ function loadFromSheet(){
 }
 
 function exportData(){
-  const logs = getLogs();
+  const rawLogs = getLogs();
   const gutLogs = getGutLogs();
+  
+  // Auto-fill sleepAwake from sleepSummary if missing
+  const logs = rawLogs.map(r => {
+    const r2 = {...r};
+    if (!r2.sleepAwake || r2.sleepAwake === '—') {
+      const summary = r2.sleepSummary || '';
+      const totalH = (() => {
+        const m = (r2.sleepTotal || '').match(/(\d+)h(\d+)m/);
+        return m ? parseInt(m[1]) + parseInt(m[2])/60 : null;
+      })();
+      
+      // Try "Awake XX分" or "Awake XX分鐘"
+      let m = summary.match(/Awake\s+(\d+)\s*分/);
+      if (m && totalH) { r2.sleepAwake = (parseInt(m[1]) / (totalH*60) * 100).toFixed(1) + '%'; }
+      // Try "Awake XX" (followed by Chinese chars like 略超標)
+      if (!r2.sleepAwake || r2.sleepAwake === '—') {
+        m = summary.match(/Awake\s+(\d+)(?!\s*[分m])/);
+        if (m && totalH) { r2.sleepAwake = (parseInt(m[1]) / (totalH*60) * 100).toFixed(1) + '%'; }
+      }
+      // Try "清醒X%"
+      if (!r2.sleepAwake || r2.sleepAwake === '—') {
+        m = summary.match(/清醒\s*(\d+(?:\.\d+)?)\s*%/);
+        if (m) { r2.sleepAwake = m[1] + '%'; }
+      }
+    }
+    return r2;
+  });
+  
   const data = JSON.stringify({logs: logs, gutLogs: gutLogs}, null, 2);
   // Build overlay safely using DOM (not innerHTML) to avoid CSS leaks
   const overlay = document.createElement('div');
